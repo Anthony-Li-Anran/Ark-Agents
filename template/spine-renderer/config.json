@@ -1,0 +1,24 @@
+{
+  "window": {
+    "width": 400,
+    "height": 400,
+    "transparent": true,
+    "frame": false,
+    "alwaysOnTop": true,
+    "clickThrough": true
+  },
+  "model": {
+    "path": "models/your_model",
+    "name": "your_model_name",
+    "scale": 1.0,
+    "x": 200,
+    "y": 350,
+    "speed": 80,
+    "boundary": 150,
+    "defaultAnimation": "Relax"
+  },
+  "canvas": {
+    "width": 400,
+    "height": 400
+  }
+}
