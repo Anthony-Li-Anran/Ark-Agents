@@ -195,6 +195,174 @@ style.textContent = `
   font-weight: 500;
 }
 
+.operator-panel {
+  position: fixed;
+  z-index: 10000;
+  display: none;
+  font-family: Arial, sans-serif;
+  user-select: none;
+}
+.operator-panel.visible {
+  display: block;
+}
+/* From Uiverse.io by ElSombrero2 */
+.card {
+  width: 190px;
+  height: 254px;
+  background: #171717;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  overflow: hidden;
+  position: relative;
+  box-shadow: 0px 0px 3px 1px #00000088;
+  cursor: pointer;
+}
+.card .content {
+  border-radius: 5px;
+  background: #171717;
+  width: 186px;
+  height: 250px;
+  z-index: 1;
+  padding: 20px;
+  color: white;
+  display: flex;
+  justify-content: flex-start;
+  align-items: flex-start;
+  box-sizing: border-box;
+}
+.content::before {
+  opacity: 0;
+  transition: opacity 300ms;
+  content: " ";
+  display: block;
+  background: white;
+  width: 5px;
+  height: 50px;
+  position: absolute;
+  filter: blur(50px);
+  overflow: hidden;
+}
+.card:hover .content::before {
+  opacity: 1;
+}
+.card::before {
+  opacity: 0;
+  content: " ";
+  position: absolute;
+  display: block;
+  width: 80px;
+  height: 360px;
+  background: linear-gradient(#ff2288, #387ef0);
+  transition: opacity 300ms;
+  animation: rotation_9018 8000ms infinite linear;
+  animation-play-state: paused;
+}
+.card:hover::before {
+  opacity: 1;
+  animation-play-state: running;
+}
+.card::after {
+  position: absolute;
+  content: " ";
+  display: block;
+  width: 250px;
+  height: 360px;
+  background: #17171733;
+  backdrop-filter: blur(50px);
+}
+@keyframes rotation_9018 {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+/* From Uiverse.io by cbolson */
+.my-form {
+  --_clr-primary: #666;
+  --_clr-hover: #f33195;
+  --_clr-checked: #127acf;
+}
+.my-form > div {
+  --_clr-current: var(--_clr-primary);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.operator-card-actions {
+  position: absolute;
+  right: 14px;
+  bottom: 14px;
+  z-index: 2;
+}
+.operator-exit-btn {
+  background: transparent;
+  border: 1px solid #666;
+  border-radius: 2px;
+  color: #666;
+  cursor: pointer;
+  font: inherit;
+  padding: 4px 10px;
+  transition: border-color 150ms ease-in-out, color 150ms ease-in-out;
+}
+.operator-exit-btn:hover,
+.operator-exit-btn:focus-visible {
+  border-color: #f33195;
+  color: #f33195;
+  outline: none;
+}
+.my-form > div + div {
+  margin-block-start: 0.5rem;
+}
+.my-form label {
+  cursor: pointer;
+  color: var(--_clr-current);
+  transition: color 150ms ease-in-out;
+}
+.my-form input[type="checkbox"] {
+  appearance: none;
+  outline: none;
+  width: 1.5rem;
+  height: 1.5rem;
+  aspect-ratio: 1;
+  padding: 0.25rem;
+  background: transparent;
+  border: 1px solid var(--_clr-current);
+  border-radius: 2px;
+  display: grid;
+  place-content: center;
+  cursor: pointer;
+}
+.my-form input[type="checkbox"]::after {
+  content: "\\2714";
+  opacity: 0;
+  transition: opacity 150ms ease-in-out;
+  color: var(--_clr-checked);
+  font-size: inherit;
+  font-family: inherit;
+}
+.my-form label:hover,
+.my-form input[type="checkbox"]:focus-visible,
+.my-form input[type="checkbox"]:focus-visible + label,
+.my-form input[type="checkbox"]:hover,
+.my-form input[type="checkbox"]:hover + label {
+  --_clr-current: var(--_clr-hover);
+}
+.my-form input[type="checkbox"]:focus-visible::after,
+.my-form input[type="checkbox"]:hover::after {
+  opacity: 0.5;
+  color: var(--_clr-hover);
+}
+.my-form input[type="checkbox"]:checked + label:not(:hover),
+.my-form input[type="checkbox"]:checked:not(:hover) {
+  --_clr-current: var(--_clr-checked);
+}
+.my-form input[type="checkbox"]:checked::after {
+  opacity: 1;
+}
+
 /* Loading spinner - positioned at top-right of model */
 /* From Uiverse.io by abrahamcalsin */
 .ai-loading-spinner {
@@ -293,21 +461,36 @@ const canvasContainer = document.getElementById('canvas-container');
 
 const MODEL_PATH = path.join(__dirname, '..', 'models', '002_amiya');
 const MODEL_NAME = 'build_char_002_amiya';
+const TEXAS_MODEL_PATH = path.join(__dirname, '..', 'models', '102_texas');
+const TEXAS_MODEL_NAME = 'build_char_102_texas';
 
 const MOVING_SPEED = 80;
 const MODEL_WIDTH = 150;
+const TEXAS_MODEL_WIDTH = 150;
+const GREETING_BUBBLE_DURATION_MS = 5000;
 
-const ANIMATIONS = {
+const DAY_ANIMATIONS = {
     'Relax': { next: ['MoveLeft', 'MoveRight', 'Sit'], weight: [0.3, 0.3, 0.4] },
     'Sit': { next: ['Relax', 'MoveLeft', 'MoveRight'], weight: [0.5, 0.25, 0.25] },
     'MoveLeft': { next: ['Relax', 'MoveRight', 'Sit'], weight: [0.4, 0.3, 0.3] },
     'MoveRight': { next: ['Relax', 'MoveLeft', 'Sit'], weight: [0.4, 0.3, 0.3] }
 };
 
+const SLEEP_ANIMATIONS = {
+    'Relax': { next: ['Sleep'], weight: [1] },
+    'Sleep': { next: ['Sleep'], weight: [1] }
+};
+
+const TEXAS_ANIMATIONS = {
+    'Relax2': { next: ['MoveLeft2', 'MoveRight2', 'Sit2'], weight: [0.3, 0.3, 0.4] },
+    'Sit2': { next: ['Relax2', 'MoveLeft2', 'MoveRight2'], weight: [0.5, 0.25, 0.25] },
+    'MoveLeft2': { next: ['Relax2', 'MoveRight2', 'Sit2'], weight: [0.4, 0.3, 0.3] },
+    'MoveRight2': { next: ['Relax2', 'MoveLeft2', 'Sit2'], weight: [0.4, 0.3, 0.3] }
+};
+
 let app = null;
 let spineAnimation = null;
-let debugBorder = null;
-let windowBorder = null;
+let texasAnimation = null;
 let chatContainer = null;
 let chatMessages = null;
 let messageInput = null;
@@ -326,11 +509,21 @@ let isUserInteracting = false;
 let moveDirection = 'right';
 let lastFrameTime = 0;
 let moveAnimationId = null;
+let activePointerModel = null;
+let texasEnabled = false;
+let texasScale = 0.4;
+let texasCurrentAnimation = null;
+let texasAnimationTimer = null;
+let texasMoveDirection = 'right';
+let texasLastFrameTime = 0;
+let texasMoveAnimationId = null;
+let texasIsUserInteracting = false;
 
 // Chat UI elements
 let chatInputWrapper = null;
 let exitChatBtn = null;
 let aiBubble = null;
+let aiBubbleHideTimer = null;
 let aiLoadingSpinner = null;
 let pendingChatAfterSetup = false;
 let chatActivationInProgress = false;
@@ -338,6 +531,7 @@ let screenWidth = 1920;
 let screenHeight = 1080;
 let currentAnimation = null;
 let animationTimer = null;
+let startupGreetingShown = false;
 
 const DRAG_THRESHOLD = 5;
 
@@ -346,12 +540,15 @@ const CONTEXT_MENU_ITEMS = [
     { id: 'schedule', label: 'Schedule' },
     { id: 'memo', label: 'Memo' },
     { id: 'reminder', label: 'Reminder' },
+    { id: 'operators', label: 'Operators' },
     { id: 'exit', label: 'Exit' }
 ];
 
 let contextMenu = null;
+let operatorPanel = null;
 let contextMenuVisible = false;
 let contextMenuInteraction = false;
+let selectedOperator = null;
 
 function createContextMenu() {
     if (contextMenu) return;
@@ -438,7 +635,6 @@ function createContextMenu() {
         });
         row.addEventListener('click', () => {
             onContextMenuAction(item.id);
-            hideContextMenu();
         });
         contextMenu.appendChild(row);
     });
@@ -476,7 +672,7 @@ function showContextMenu(x, y) {
     }
     isUserInteracting = true;
     contextMenuInteraction = true;
-    playAnimation('Relax', true);
+    playAnimation(getDefaultIdleAnimation(), true);
 
     // Position context menu紧贴模型右侧 (closely attached to model's right side)
     const bounds = spineAnimation.getBounds();
@@ -497,16 +693,99 @@ function showContextMenu(x, y) {
     if (rect.bottom > screenHeight) {
         contextMenu.style.top = `${Math.max(10, screenHeight - rect.height - 10)}px`;
     }
+    if (operatorPanel && operatorPanel.classList.contains('visible')) {
+        positionOperatorPanel();
+    }
 }
 
 function hideContextMenu() {
     if (!contextMenu) return;
     contextMenu.style.display = 'none';
     contextMenuVisible = false;
+    hideOperatorPanel();
     if (contextMenuInteraction) {
         contextMenuInteraction = false;
         isUserInteracting = false;
         scheduleNextAnimation();
+    }
+}
+
+function createOperatorPanel() {
+    if (operatorPanel) return;
+
+    operatorPanel = document.createElement('div');
+    operatorPanel.className = 'operator-panel';
+    operatorPanel.innerHTML = `
+        <div class="card">
+            <div class="content">
+                <form class="my-form">
+                    <div>
+                        <input type="checkbox" id="operator-texas" name="operator" value="texas">
+                        <label for="operator-texas">Texas</label>
+                    </div>
+                </form>
+                <div class="operator-card-actions">
+                    <button type="button" class="operator-exit-btn">Exit</button>
+                </div>
+            </div>
+        </div>
+    `;
+
+    const texasCheckbox = operatorPanel.querySelector('#operator-texas');
+    texasCheckbox.checked = selectedOperator === 'texas';
+    texasCheckbox.addEventListener('change', async () => {
+        selectedOperator = texasCheckbox.checked ? 'texas' : null;
+        if (texasCheckbox.checked) {
+            await showTexasModel();
+        } else {
+            hideTexasModel();
+        }
+    });
+
+    const exitButton = operatorPanel.querySelector('.operator-exit-btn');
+    exitButton.addEventListener('click', () => {
+        hideOperatorPanel();
+    });
+
+    operatorPanel.addEventListener('mousedown', (event) => {
+        event.stopPropagation();
+    });
+    operatorPanel.addEventListener('click', (event) => {
+        event.stopPropagation();
+    });
+
+    document.body.appendChild(operatorPanel);
+}
+
+function positionOperatorPanel() {
+    if (!operatorPanel || !contextMenu) return;
+
+    const menuRect = contextMenu.getBoundingClientRect();
+    let left = menuRect.right + 12;
+    let top = menuRect.top;
+
+    operatorPanel.classList.add('visible');
+    const panelRect = operatorPanel.getBoundingClientRect();
+
+    if (left + panelRect.width > screenWidth - 10) {
+        left = Math.max(10, menuRect.left - panelRect.width - 12);
+    }
+    if (top + panelRect.height > screenHeight - 10) {
+        top = Math.max(10, screenHeight - panelRect.height - 10);
+    }
+
+    operatorPanel.style.left = `${left}px`;
+    operatorPanel.style.top = `${top}px`;
+}
+
+function showOperatorPanel() {
+    createOperatorPanel();
+    positionOperatorPanel();
+}
+
+function hideOperatorPanel() {
+    if (operatorPanel) {
+        operatorPanel.classList.remove('visible');
     }
 }
 
@@ -534,6 +813,10 @@ async function onContextMenuAction(actionId) {
     if (actionId === 'reminder') {
         ipcRenderer.send('open-reminder-window');
         hideContextMenu();
+        return;
+    }
+    if (actionId === 'operators') {
+        showOperatorPanel();
         return;
     }
     // TODO: implement actual feature behavior for each action
@@ -581,7 +864,7 @@ function showChatUI(playRelaxAnimation = true, showTakeoverMessage = false) {
     chatVisible = true;
     isUserInteracting = true;
 
-    // Switch to Relax animation and keep it (unless specified otherwise)
+    // Chat mode should stay attentive regardless of the night idle schedule.
     if (playRelaxAnimation) {
         playAnimation('Relax', true);
     }
@@ -628,12 +911,53 @@ function showGreeting() {
     // Get greeting from main process
     ipcRenderer.invoke('get-greeting').then(result => {
         if (result.success) {
-            showAIBubble(result.greeting);
+            showAIBubble(result.greeting, false, GREETING_BUBBLE_DURATION_MS);
         }
     }).catch(error => {
         // Fallback greeting
-        showAIBubble('欢迎回家，博士。');
+        showAIBubble('欢迎回家，博士。', false, GREETING_BUBBLE_DURATION_MS);
     });
+}
+
+function isSleepTime(date = new Date()) {
+    const hour = date.getHours();
+    return hour >= 23 || hour < 7;
+}
+
+function getActiveAnimationMatrix() {
+    return isSleepTime() ? SLEEP_ANIMATIONS : DAY_ANIMATIONS;
+}
+
+function getDefaultIdleAnimation() {
+    return isSleepTime() ? 'Sleep' : 'Relax';
+}
+
+function getTimeGreeting(date = new Date()) {
+    const hour = date.getHours();
+
+    if (hour >= 23 || hour < 7) {
+        return '博士，夜深了，早点休息吧。';
+    }
+    if (hour < 11) {
+        return '博士，早上好！';
+    }
+    if (hour < 14) {
+        return '博士，中午好！';
+    }
+    if (hour < 18) {
+        return '博士，下午好！';
+    }
+    return '博士，晚上好！';
+}
+
+function showStartupGreeting() {
+    if (startupGreetingShown || chatVisible) return;
+    startupGreetingShown = true;
+    setTimeout(() => {
+        if (!chatVisible && spineAnimation) {
+            showAIBubble(getTimeGreeting(), false, GREETING_BUBBLE_DURATION_MS);
+        }
+    }, 700);
 }
 
 // System notification popup (separate from chat bubble)
@@ -724,21 +1048,30 @@ function hideChatUI() {
     // Re-enable mouse ignore
     ipcRenderer.send('set-ignore-mouse-events', true);
 
-    // Reset to default animation state (Relax)
-    playAnimation('Relax', true);
+    // Reset to the default animation state for the current time.
+    playAnimation(getDefaultIdleAnimation(), true);
 
     // Resume animation scheduling
     scheduleNextAnimation();
 }
 
-function showAIBubble(text, isError = false) {
+function showAIBubble(text, isError = false, autoHideMs = 0) {
     if (!aiBubble) {
         aiBubble = document.createElement('div');
         aiBubble.className = 'ai-bubble';
         document.body.appendChild(aiBubble);
     }
 
-    aiBubble.innerHTML = `<div class="bubble-text">${text}</div>`;
+    if (aiBubbleHideTimer) {
+        clearTimeout(aiBubbleHideTimer);
+        aiBubbleHideTimer = null;
+    }
+
+    aiBubble.innerHTML = '';
+    const bubbleText = document.createElement('div');
+    bubbleText.className = 'bubble-text';
+    bubbleText.textContent = text;
+    aiBubble.appendChild(bubbleText);
     aiBubble.classList.remove('loading', 'error');
     if (isError) {
         aiBubble.classList.add('error');
@@ -750,6 +1083,13 @@ function showAIBubble(text, isError = false) {
     requestAnimationFrame(() => {
         aiBubble.classList.add('visible');
     });
+
+    if (autoHideMs > 0) {
+        aiBubbleHideTimer = setTimeout(() => {
+            hideAIBubble();
+            aiBubbleHideTimer = null;
+        }, autoHideMs);
+    }
 }
 
 function createLoadingSpinner() {
@@ -795,6 +1135,10 @@ function updateLoadingSpinnerPosition() {
 }
 
 function hideAIBubble() {
+    if (aiBubbleHideTimer) {
+        clearTimeout(aiBubbleHideTimer);
+        aiBubbleHideTimer = null;
+    }
     if (aiBubble) {
         aiBubble.classList.remove('visible');
     }
@@ -956,7 +1300,7 @@ function handleEdgeCollision(bounds) {
 
     const shouldRelax = Math.random() < 0.5;
     if (shouldRelax) {
-        playAnimation('Relax', true);
+        playAnimation(getDefaultIdleAnimation(), true);
         stopMoving();
         return;
     }
@@ -967,19 +1311,10 @@ function handleEdgeCollision(bounds) {
     playAnimation(nextAnimation, true);
 }
 
-function updateDebugBorder() {
-    if (!debugBorder || !spineAnimation) return;
-
-    const bounds = spineAnimation.getBounds();
-    debugBorder.clear();
-    debugBorder.lineStyle(2, 0xff0000, 1);
-    debugBorder.drawRect(bounds.x, bounds.y, bounds.width, bounds.height);
-}
-
 function getNextAnimation(current) {
-    const transitions = ANIMATIONS[current];
+    const transitions = getActiveAnimationMatrix()[current];
     if (!transitions) {
-        return 'Relax';
+        return getDefaultIdleAnimation();
     }
 
     const rand = Math.random();
@@ -1070,7 +1405,6 @@ function startMoving() {
         }
 
         moveAnimationId = requestAnimationFrame(moveStep);
-        updateDebugBorder();
     };
 
     moveAnimationId = requestAnimationFrame(moveStep);
@@ -1083,11 +1417,219 @@ function stopMoving() {
     }
 }
 
+function playTexasAnimation(name, loop = true) {
+    if (!texasAnimation) return;
+
+    const animationName = name === 'MoveLeft2' || name === 'MoveRight2' ? 'Move2' : name;
+    texasAnimation.state.setAnimation(0, animationName, loop);
+    texasCurrentAnimation = name;
+}
+
+function setTexasDirection(dir) {
+    texasMoveDirection = dir;
+    if (texasAnimation) {
+        const scaleX = Math.abs(texasAnimation.scale.x);
+        texasAnimation.scale.x = dir === 'left' ? -scaleX : scaleX;
+    }
+}
+
+function getNextTexasAnimation(current) {
+    const transitions = TEXAS_ANIMATIONS[current];
+    if (!transitions) {
+        return 'Relax2';
+    }
+
+    const rand = Math.random();
+    let sum = 0;
+    for (let i = 0; i < transitions.next.length; i++) {
+        sum += transitions.weight[i];
+        if (rand < sum) {
+            return transitions.next[i];
+        }
+    }
+    return transitions.next[0];
+}
+
+function scheduleNextTexasAnimation() {
+    if (texasAnimationTimer) {
+        clearTimeout(texasAnimationTimer);
+    }
+    if (!texasEnabled || !texasAnimation) {
+        return;
+    }
+
+    const duration = 3000 + Math.random() * 4000;
+    texasAnimationTimer = setTimeout(() => {
+        if (!texasEnabled || !texasAnimation || texasIsUserInteracting) {
+            return;
+        }
+
+        const nextAnim = getNextTexasAnimation(texasCurrentAnimation || 'Relax2');
+        if (nextAnim === 'MoveLeft2') {
+            setTexasDirection('left');
+            playTexasAnimation('MoveLeft2', true);
+            startTexasMoving();
+        } else if (nextAnim === 'MoveRight2') {
+            setTexasDirection('right');
+            playTexasAnimation('MoveRight2', true);
+            startTexasMoving();
+        } else {
+            stopTexasMoving();
+            playTexasAnimation(nextAnim, true);
+        }
+
+        scheduleNextTexasAnimation();
+    }, duration);
+}
+
+function handleTexasEdgeCollision(bounds) {
+    const shouldRelax = Math.random() < 0.5;
+    if (shouldRelax) {
+        playTexasAnimation('Relax2', true);
+        stopTexasMoving();
+        return;
+    }
+
+    const nextDirection = texasMoveDirection === 'right' ? 'left' : 'right';
+    setTexasDirection(nextDirection);
+    playTexasAnimation(nextDirection === 'left' ? 'MoveLeft2' : 'MoveRight2', true);
+}
+
+function startTexasMoving() {
+    if (texasMoveAnimationId || !texasAnimation) return;
+
+    texasLastFrameTime = Date.now();
+
+    const moveStep = () => {
+        if (!texasEnabled || !texasAnimation || texasIsUserInteracting) {
+            texasMoveAnimationId = null;
+            return;
+        }
+
+        const now = Date.now();
+        const delta = (now - texasLastFrameTime) / 1000;
+        texasLastFrameTime = now;
+        const movement = MOVING_SPEED * delta;
+
+        if (texasMoveDirection === 'right') {
+            texasAnimation.x += movement;
+            const newBounds = texasAnimation.getBounds();
+            if (isAtRightEdge(newBounds)) {
+                texasAnimation.x -= Math.max(0, newBounds.x + newBounds.width - screenWidth);
+                handleTexasEdgeCollision(newBounds);
+            }
+        } else {
+            texasAnimation.x -= movement;
+            const newBounds = texasAnimation.getBounds();
+            if (isAtLeftEdge(newBounds)) {
+                texasAnimation.x += Math.max(0, 0 - newBounds.x);
+                handleTexasEdgeCollision(newBounds);
+            }
+        }
+
+        if (texasCurrentAnimation !== 'MoveLeft2' && texasCurrentAnimation !== 'MoveRight2') {
+            stopTexasMoving();
+            return;
+        }
+
+        texasMoveAnimationId = requestAnimationFrame(moveStep);
+    };
+
+    texasMoveAnimationId = requestAnimationFrame(moveStep);
+}
+
+function stopTexasMoving() {
+    if (texasMoveAnimationId) {
+        cancelAnimationFrame(texasMoveAnimationId);
+        texasMoveAnimationId = null;
+    }
+}
+
+async function showTexasModel() {
+    texasEnabled = true;
+    selectedOperator = 'texas';
+    if (texasAnimation) {
+        texasAnimation.visible = true;
+        playTexasAnimation('Relax2', true);
+        scheduleNextTexasAnimation();
+        return;
+    }
+
+    const skelPath = path.join(TEXAS_MODEL_PATH, `${TEXAS_MODEL_NAME}.skel`);
+    const atlasPath = path.join(TEXAS_MODEL_PATH, `${TEXAS_MODEL_NAME}.atlas`);
+    const pngPath = path.join(TEXAS_MODEL_PATH, `${TEXAS_MODEL_NAME}.png`);
+
+    if (!fs.existsSync(skelPath) || !fs.existsSync(atlasPath) || !fs.existsSync(pngPath)) {
+        console.error(`Texas model files not found in: ${TEXAS_MODEL_PATH}`);
+        texasEnabled = false;
+        selectedOperator = null;
+        const checkbox = operatorPanel ? operatorPanel.querySelector('#operator-texas') : null;
+        if (checkbox) checkbox.checked = false;
+        return;
+    }
+
+    try {
+        const atlasData = fs.readFileSync(atlasPath, 'utf-8');
+        const textureData = fs.readFileSync(pngPath);
+        const skeletonData = fs.readFileSync(skelPath);
+
+        const baseTexture = PIXI.BaseTexture.from(`data:image/png;base64,${textureData.toString('base64')}`);
+        const texture = new PIXI.Texture(baseTexture);
+        const textureAtlas = new TextureAtlas(atlasData, (line, callback) => {
+            callback(texture.baseTexture);
+        });
+        const atlasLoader = new AtlasAttachmentLoader(textureAtlas);
+        const skeletonBinary = new SkeletonBinary(atlasLoader);
+        skeletonBinary.scale = texasScale;
+        const skeletonDataParsed = skeletonBinary.readSkeletonData(new Uint8Array(skeletonData));
+
+        texasAnimation = new Spine(skeletonDataParsed);
+        texasAnimation.x = Math.min(screenWidth - TEXAS_MODEL_WIDTH, screenWidth / 2 + 180);
+        texasAnimation.y = screenHeight - 80;
+        texasAnimation.scale.set(1, 1);
+
+        app.stage.addChild(texasAnimation);
+        playTexasAnimation('Relax2', true);
+        setTexasDirection(texasMoveDirection);
+        scheduleNextTexasAnimation();
+    } catch (error) {
+        console.error(`Error loading Texas model: ${error.message}`);
+        texasEnabled = false;
+        selectedOperator = null;
+    }
+}
+
+function hideTexasModel() {
+    texasEnabled = false;
+    selectedOperator = null;
+    stopTexasMoving();
+    if (texasAnimationTimer) {
+        clearTimeout(texasAnimationTimer);
+        texasAnimationTimer = null;
+    }
+    if (texasAnimation) {
+        texasAnimation.visible = false;
+    }
+}
+
 function isPointInModel(x, y) {
     if (!spineAnimation) return false;
     const bounds = spineAnimation.getBounds();
     return x >= bounds.x && x <= bounds.x + bounds.width &&
            y >= bounds.y && y <= bounds.y + bounds.height;
+}
+
+function isPointInTexas(x, y) {
+    if (!texasEnabled || !texasAnimation || !texasAnimation.visible) return false;
+    const bounds = texasAnimation.getBounds();
+    return x >= bounds.x && x <= bounds.x + bounds.width &&
+           y >= bounds.y && y <= bounds.y + bounds.height;
+}
+
+function getPointerModelAt(x, y) {
+    if (isPointInTexas(x, y)) return 'texas';
+    if (isPointInModel(x, y)) return 'amiya';
+    return null;
 }
 
 function updateMouseIgnore(x, y) {
@@ -1097,7 +1639,7 @@ function updateMouseIgnore(x, y) {
         ipcRenderer.send('set-ignore-mouse-events', false);
         return;
     }
-    const inModel = isPointInModel(x, y);
+    const inModel = Boolean(getPointerModelAt(x, y));
     ipcRenderer.send('set-ignore-mouse-events', !inModel);
     if (inModel) {
         canvasContainer.classList.add('interactive');
@@ -1111,20 +1653,23 @@ function initDrag() {
         if (!spineAnimation) return;
         updateMouseIgnore(e.clientX, e.clientY);
 
-        if (!isDragging) return;
+        if (!isDragging || !activePointerModel) return;
 
         const deltaX = e.clientX - dragStartX;
         const deltaY = e.clientY - dragStartY;
 
-        spineAnimation.x = modelStartX + deltaX;
-        spineAnimation.y = modelStartY + deltaY;
+        const targetAnimation = activePointerModel === 'texas' ? texasAnimation : spineAnimation;
+        const targetWidth = activePointerModel === 'texas' ? TEXAS_MODEL_WIDTH : MODEL_WIDTH;
+        if (!targetAnimation) return;
 
-        if (spineAnimation.x < MODEL_WIDTH) spineAnimation.x = MODEL_WIDTH;
-        if (spineAnimation.x > screenWidth - MODEL_WIDTH) spineAnimation.x = screenWidth - MODEL_WIDTH;
-        if (spineAnimation.y < MODEL_WIDTH) spineAnimation.y = MODEL_WIDTH;
-        if (spineAnimation.y > screenHeight - MODEL_WIDTH) spineAnimation.y = screenHeight - MODEL_WIDTH;
+        targetAnimation.x = modelStartX + deltaX;
+        targetAnimation.y = modelStartY + deltaY;
 
-        updateDebugBorder();
+        if (targetAnimation.x < targetWidth) targetAnimation.x = targetWidth;
+        if (targetAnimation.x > screenWidth - targetWidth) targetAnimation.x = screenWidth - targetWidth;
+        if (targetAnimation.y < targetWidth) targetAnimation.y = targetWidth;
+        if (targetAnimation.y > screenHeight - targetWidth) targetAnimation.y = screenHeight - targetWidth;
+
         updateChatPosition(); // Update chat position when dragging
     });
 
@@ -1137,18 +1682,21 @@ function initDrag() {
             return;
         }
 
-        if (!isPointInModel(e.clientX, e.clientY)) {
+        const pointerModel = getPointerModelAt(e.clientX, e.clientY);
+        if (!pointerModel) {
             hideContextMenu();
             return;
         }
 
+        activePointerModel = pointerModel;
+        const targetAnimation = activePointerModel === 'texas' ? texasAnimation : spineAnimation;
         isMouseDown = true;
         mouseDownX = e.clientX;
         mouseDownY = e.clientY;
         dragStartX = e.clientX;
         dragStartY = e.clientY;
-        modelStartX = spineAnimation.x;
-        modelStartY = spineAnimation.y;
+        modelStartX = targetAnimation.x;
+        modelStartY = targetAnimation.y;
     });
 
     canvasContainer.addEventListener('contextmenu', (e) => {
@@ -1176,16 +1724,37 @@ function initDrag() {
         );
 
         if (!isDragging && moveDistance < DRAG_THRESHOLD) {
-            stopMoving();
-            if (animationTimer) {
-                clearTimeout(animationTimer);
+            if (activePointerModel === 'texas') {
+                stopTexasMoving();
+                if (texasAnimationTimer) {
+                    clearTimeout(texasAnimationTimer);
+                    texasAnimationTimer = null;
+                }
+            } else {
+                stopMoving();
+                if (animationTimer) {
+                    clearTimeout(animationTimer);
+                }
             }
 
-            // If in chat mode, just focus input
-            if (chatVisible) {
+            // If in chat mode, just focus input when Amiya is clicked.
+            if (chatVisible && activePointerModel === 'amiya') {
                 if (messageInput) {
                     messageInput.focus();
                 }
+            } else if (activePointerModel === 'texas') {
+                texasIsUserInteracting = true;
+                playTexasAnimation('Interact2', false);
+
+                texasAnimation.state.addListener({
+                    complete: (trackEntry) => {
+                        if (trackEntry.animation.name === 'Interact2') {
+                            playTexasAnimation('Relax2', true);
+                            texasIsUserInteracting = false;
+                            scheduleNextTexasAnimation();
+                        }
+                    }
+                });
             } else {
                 // Left click: just play Interact animation once, don't enter chat
                 isUserInteracting = true;
@@ -1202,17 +1771,25 @@ function initDrag() {
                 });
             }
         } else if (isDragging) {
-            stopMoving();
-            // Keep Relax animation if in chat mode
-            if (!chatVisible) {
-                playAnimation('Relax', true);
-                isUserInteracting = false;
-                scheduleNextAnimation();
+            if (activePointerModel === 'texas') {
+                stopTexasMoving();
+                playTexasAnimation('Relax2', true);
+                texasIsUserInteracting = false;
+                scheduleNextTexasAnimation();
+            } else {
+                stopMoving();
+                // Keep Relax animation if in chat mode
+                if (!chatVisible) {
+                    playAnimation(getDefaultIdleAnimation(), true);
+                    isUserInteracting = false;
+                    scheduleNextAnimation();
+                }
             }
         }
 
         isDragging = false;
         isMouseDown = false;
+        activePointerModel = null;
     });
 
     document.addEventListener('mousemove', (e) => {
@@ -1225,13 +1802,23 @@ function initDrag() {
 
         if (moveDistance >= DRAG_THRESHOLD && !isDragging) {
             isDragging = true;
-            isUserInteracting = true;
-            stopMoving();
-            if (animationTimer) {
-                clearTimeout(animationTimer);
+            if (activePointerModel === 'texas') {
+                texasIsUserInteracting = true;
+                stopTexasMoving();
+                if (texasAnimationTimer) {
+                    clearTimeout(texasAnimationTimer);
+                    texasAnimationTimer = null;
+                }
+                playTexasAnimation('Relax2', true);
+            } else {
+                isUserInteracting = true;
+                stopMoving();
+                if (animationTimer) {
+                    clearTimeout(animationTimer);
+                }
+                // Keep the current idle animation during drag.
+                playAnimation(getDefaultIdleAnimation(), true);
             }
-            // Keep Relax animation during drag in chat mode
-            playAnimation('Relax', true);
         }
     });
 }
@@ -1305,17 +1892,9 @@ async function loadSpineModel() {
 
         app.stage.addChild(spineAnimation);
 
-        debugBorder = new PIXI.Graphics();
-        app.stage.addChild(debugBorder);
-        updateDebugBorder();
-
-        windowBorder = new PIXI.Graphics();
-        windowBorder.lineStyle(1, 0xffffff, 0.5);
-        windowBorder.drawRect(0, 0, screenWidth, screenHeight);
-        app.stage.addChild(windowBorder);
-
-        playAnimation('Relax', true);
+        playAnimation(getDefaultIdleAnimation(), true);
         setDirection(moveDirection);
+        showStartupGreeting();
         // Only start animation scheduling if not in chat mode
         if (!chatVisible) {
             scheduleNextAnimation();
