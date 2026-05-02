@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Amiya - Todo List</title>
+    <title>Amiya - Schedule</title>
     <style>
         * {
             margin: 0;
@@ -536,9 +536,20 @@
         const { ipcRenderer } = require('electron');
 
         let categories = [];
+        const scheduleCopy = {
+            emptyTitle: '暂无日程',
+            emptyHint: '点击 + 添加第一项日程',
+            addTitle: '新建日程',
+            editTitle: '编辑日程'
+        };
 
         // Initialize
         async function init() {
+            document.title = 'Amiya - Schedule';
+            const headerTitle = document.querySelector('.header h1');
+            const headerDesc = document.querySelector('.header p');
+            if (headerTitle) headerTitle.textContent = '博士的日程';
+            if (headerDesc) headerDesc.textContent = '让阿米娅帮您管理安排与计划';
             await loadCategories();
             await loadTodos();
         }
@@ -563,6 +574,14 @@
             const container = document.getElementById('todo-list');
             
             if (todos.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">📅</div>
+                        <p>${scheduleCopy.emptyTitle}</p>
+                        <p style="font-size: 12px; margin-top: 8px;">${scheduleCopy.emptyHint}</p>
+                    </div>
+                `;
+                return;
                 container.innerHTML = `
                     <div class="empty-state">
                         <div class="empty-state-icon">📋</div>
@@ -643,6 +662,7 @@
         function openAddModal() {
             document.getElementById('modal-title').textContent = '新建任务';
             document.getElementById('todo-form').reset();
+            document.getElementById('modal-title').textContent = scheduleCopy.addTitle;
             document.getElementById('todo-id').value = '';
             document.getElementById('modal').classList.add('active');
         }
@@ -654,6 +674,7 @@
 
             document.getElementById('modal-title').textContent = '编辑任务';
             document.getElementById('todo-id').value = todo.id;
+            document.getElementById('modal-title').textContent = scheduleCopy.editTitle;
             document.getElementById('todo-title').value = todo.title;
             document.getElementById('todo-description').value = todo.description || '';
             document.getElementById('todo-status').value = todo.status;

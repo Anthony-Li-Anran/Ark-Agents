@@ -16,7 +16,7 @@ const CONFIG_FILE = 'ai-config.json';
 const defaultConfig = {
     provider: 'ollama', // 'ollama', 'lmstudio', 'openai', 'custom'
     endpoint: 'http://127.0.0.1:11434',
-    model: 'qwen2.5:7b',
+    model: '',
     apiKey: '',
     isFirstRun: true,
     isConfigured: false,
@@ -28,7 +28,7 @@ const providers = {
     ollama: {
         name: 'Ollama',
         defaultEndpoint: 'http://127.0.0.1:11434',
-        defaultModel: 'qwen2.5:7b',
+        defaultModel: '',
         models: [
             { id: 'qwen2.5:0.5b', name: 'Qwen 2.5 (0.5B) - 超轻量', size: '400MB', desc: '极小体积，适合极低配电脑，基础对话能力', category: 'small' },
             { id: 'qwen2.5:1.5b', name: 'Qwen 2.5 (1.5B) - 轻量', size: '1.0GB', desc: '轻量级，适合低配电脑，日常对话流畅', category: 'small' },
@@ -72,20 +72,43 @@ class AIConfigManager {
         this.setupIPC();
     }
 
+    normalizeConfig(config) {
+        const normalized = { ...defaultConfig, ...(config || {}) };
+
+        if (typeof normalized.provider === 'string') {
+            normalized.provider = normalized.provider.trim() || defaultConfig.provider;
+        }
+        if (typeof normalized.endpoint === 'string') {
+            normalized.endpoint = normalized.endpoint.trim().replace(/\/+$/, '');
+        }
+        if (typeof normalized.model === 'string') {
+            normalized.model = normalized.model.trim();
+        }
+        if (typeof normalized.apiKey === 'string') {
+            normalized.apiKey = normalized.apiKey.trim();
+        }
+
+        if (!normalized.endpoint) {
+            normalized.endpoint = providers[normalized.provider]?.defaultEndpoint || defaultConfig.endpoint;
+        }
+        return normalized;
+    }
+
     loadConfig() {
         try {
             if (fs.existsSync(this.configPath)) {
                 const data = fs.readFileSync(this.configPath, 'utf-8');
-                return { ...defaultConfig, ...JSON.parse(data) };
+                return this.normalizeConfig(JSON.parse(data));
             }
         } catch (error) {
             console.warn('Failed to load AI config:', error);
         }
-        return { ...defaultConfig };
+        return this.normalizeConfig(defaultConfig);
     }
 
     saveConfig() {
         try {
+            fs.mkdirSync(path.dirname(this.configPath), { recursive: true });
             fs.writeFileSync(this.configPath, JSON.stringify(this.config, null, 2));
             return true;
         } catch (error) {
@@ -95,12 +118,126 @@ class AIConfigManager {
     }
 
     getConfig() {
+        this.config = this.loadConfig();
         return { ...this.config };
     }
 
     updateConfig(updates) {
-        this.config = { ...this.config, ...updates };
+        this.config = this.normalizeConfig({ ...this.config, ...updates });
         return this.saveConfig();
+    }
+
+    hasModel(models, modelName) {
+        if (!modelName) return true;
+        return (models || []).some((model) => {
+            const name = model.name || model.id || model.model;
+            return name === modelName;
+        });
+    }
+
+    async isOllamaServiceRunning() {
+        try {
+            const response = await fetch('http://127.0.0.1:11434/api/tags', {
+                method: 'GET',
+                timeout: 3000
+            });
+            return response.ok;
+        } catch {
+            return false;
+        }
+    }
+
+    async getOllamaExecutable() {
+        const command = process.platform === 'win32' ? 'where ollama' : 'which ollama';
+
+        try {
+            const { stdout } = await execPromise(command);
+            const firstPath = stdout.split(/\r?\n/).map(line => line.trim()).find(Boolean);
+            if (firstPath && fs.existsSync(firstPath)) {
+                return firstPath;
+            }
+        } catch {
+            // Continue with common install locations below.
+        }
+
+        const candidates = process.platform === 'win32'
+            ? [
+                path.join(process.env.LOCALAPPDATA || '', 'Programs', 'Ollama', 'ollama.exe'),
+                path.join(process.env.ProgramFiles || '', 'Ollama', 'ollama.exe'),
+                path.join(process.env['ProgramFiles(x86)'] || '', 'Ollama', 'ollama.exe')
+            ]
+            : ['/usr/local/bin/ollama', '/usr/bin/ollama'];
+
+        return candidates.find(candidate => candidate && fs.existsSync(candidate)) || null;
+    }
+
+    parseOllamaList(output) {
+        return output
+            .split(/\r?\n/)
+            .slice(1)
+            .map((line) => line.trim())
+            .filter(Boolean)
+            .map((line) => {
+                const [name, id, size, ...modifiedParts] = line.split(/\s{2,}|\t+/).filter(Boolean);
+                return {
+                    name,
+                    id,
+                    size,
+                    modified_at: modifiedParts.join(' ')
+                };
+            })
+            .filter((model) => model.name);
+    }
+
+    async listOllamaModels() {
+        try {
+            const response = await fetch('http://127.0.0.1:11434/api/tags', {
+                method: 'GET',
+                timeout: 5000
+            });
+            if (response.ok) {
+                const data = await response.json();
+                return { success: true, models: data.models || [] };
+            }
+        } catch {
+            // Fall back to the CLI below when the local HTTP service is not ready.
+        }
+
+        try {
+            const ollamaPath = await this.getOllamaExecutable();
+            if (!ollamaPath) {
+                return { success: false, models: [], message: 'Ollama executable was not found.' };
+            }
+            const { stdout } = await execPromise(`"${ollamaPath}" list`);
+            return { success: true, models: this.parseOllamaList(stdout) };
+        } catch (error) {
+            return { success: false, models: [], message: error.message };
+        }
+    }
+
+    parsePullProgress(text) {
+        const cleanText = String(text || '')
+            .replace(/\u001b\[[0-9;?]*[A-Za-z]/g, '')
+            .replace(/\s+/g, ' ')
+            .trim();
+
+        if (!cleanText) {
+            return null;
+        }
+
+        const percentMatch = cleanText.match(/(\d{1,3})\s*%/);
+        const percent = percentMatch ? Math.max(0, Math.min(100, Number(percentMatch[1]))) : null;
+
+        return {
+            percent,
+            status: cleanText
+        };
+    }
+
+    sendPullProgress(sender, payload) {
+        if (sender && !sender.isDestroyed()) {
+            sender.send('ai-pull-model-progress', payload);
+        }
     }
 
     // Detect local LLM services
@@ -154,16 +291,31 @@ class AIConfigManager {
     async testConnection(config) {
         try {
             if (config.provider === 'ollama') {
+                if (!config.model) {
+                    return {
+                        success: false,
+                        message: 'No Ollama model selected. Please choose a local model or download one.',
+                        models: []
+                    };
+                }
                 const response = await fetch(`${config.endpoint}/api/tags`, {
                     method: 'GET',
                     timeout: 5000
                 });
                 if (response.ok) {
                     const data = await response.json();
+                    const models = data.models || [];
+                    if (!this.hasModel(models, config.model)) {
+                        return {
+                            success: false,
+                            message: `Ollama model "${config.model}" is not installed. Run: ollama pull ${config.model}`,
+                            models
+                        };
+                    }
                     return { 
                         success: true, 
                         message: '连接成功',
-                        models: data.models || []
+                        models
                     };
                 }
             } else if (config.provider === 'lmstudio') {
@@ -201,16 +353,10 @@ class AIConfigManager {
 
     // Check if Ollama is installed
     async isOllamaInstalled() {
-        try {
-            if (process.platform === 'win32') {
-                await execPromise('where ollama');
-            } else {
-                await execPromise('which ollama');
-            }
+        if (await this.isOllamaServiceRunning()) {
             return true;
-        } catch {
-            return false;
         }
+        return Boolean(await this.getOllamaExecutable());
     }
 
     // Get Ollama download URL based on platform
@@ -241,33 +387,84 @@ class AIConfigManager {
     }
 
     // Pull a model in Ollama
-    async pullModel(modelName) {
+    async pullModel(modelName, sender = null) {
         return new Promise((resolve) => {
-            const pullProcess = spawn('ollama', ['pull', modelName], {
-                detached: false,
-                windowsHide: true
-            });
+            this.getOllamaExecutable().then((ollamaPath) => {
+                if (!ollamaPath) {
+                    resolve({ success: false, message: 'Ollama executable was not found.' });
+                    return;
+                }
+
+                this.sendPullProgress(sender, {
+                    modelName,
+                    percent: 0,
+                    status: `Starting download for ${modelName}...`
+                });
+
+                const pullProcess = spawn(ollamaPath, ['pull', modelName], {
+                    detached: false,
+                    windowsHide: true
+                });
 
             let output = '';
             let errorOutput = '';
+            let lastPercent = 0;
+
+            const handleProgress = (data) => {
+                const segments = data.toString().split(/\r?\n|\r/).map(part => part.trim()).filter(Boolean);
+                for (const segment of segments) {
+                    const progress = this.parsePullProgress(segment);
+                    if (!progress) continue;
+
+                    if (progress.percent !== null) {
+                        lastPercent = Math.max(lastPercent, progress.percent);
+                    }
+
+                    this.sendPullProgress(sender, {
+                        modelName,
+                        percent: progress.percent !== null ? lastPercent : null,
+                        status: progress.status
+                    });
+                }
+            };
 
             pullProcess.stdout.on('data', (data) => {
                 output += data.toString();
+                handleProgress(data);
             });
 
             pullProcess.stderr.on('data', (data) => {
                 errorOutput += data.toString();
+                handleProgress(data);
             });
 
             pullProcess.on('close', (code) => {
                 if (code === 0) {
+                    this.sendPullProgress(sender, {
+                        modelName,
+                        percent: 100,
+                        status: `Downloaded ${modelName}.`
+                    });
                     resolve({ success: true, message: '模型下载完成' });
                 } else {
+                    this.sendPullProgress(sender, {
+                        modelName,
+                        percent: lastPercent || null,
+                        status: errorOutput || output || 'Download failed.'
+                    });
                     resolve({ success: false, message: errorOutput || '下载失败' });
                 }
             });
 
             pullProcess.on('error', (error) => {
+                this.sendPullProgress(sender, {
+                    modelName,
+                    percent: lastPercent || null,
+                    status: error.message
+                });
+                resolve({ success: false, message: error.message });
+            });
+            }).catch((error) => {
                 resolve({ success: false, message: error.message });
             });
         });
@@ -307,7 +504,11 @@ class AIConfigManager {
 
         // Pull model
         ipcMain.handle('ai-pull-model', async (event, modelName) => {
-            return await this.pullModel(modelName);
+            return await this.pullModel(modelName, event.sender);
+        });
+
+        ipcMain.handle('ai-list-ollama-models', async () => {
+            return await this.listOllamaModels();
         });
 
         // Get providers info

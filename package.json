@@ -4,7 +4,7 @@
   "description": "Electron-based modular multi-Agent cluster application",
   "main": "Amiya/main.js",
   "scripts": {
-    "start": "electron .",
+    "start": "node scripts/start-electron.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "Anthony_Li",

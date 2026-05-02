@@ -740,13 +740,38 @@
         // Step 1: Detect services
         async function detectServices() {
             showStep('step-detecting');
-            
-            detectedServices = await ipcRenderer.invoke('ai-detect-services');
-            
-            if (detectedServices.length > 0) {
-                showServiceSelection();
-            } else {
+
+            const isOllamaInstalled = await ipcRenderer.invoke('ai-is-ollama-installed');
+            if (!isOllamaInstalled) {
                 showNoService();
+                return;
+            }
+
+            detectedServices = await ipcRenderer.invoke('ai-detect-services');
+            let ollamaService = detectedServices.find(s => s.provider === 'ollama');
+
+            if (!ollamaService) {
+                const localModels = await ipcRenderer.invoke('ai-list-ollama-models');
+                ollamaService = {
+                    provider: 'ollama',
+                    name: 'Ollama',
+                    endpoint: 'http://127.0.0.1:11434',
+                    models: localModels.models || [],
+                    status: localModels.success ? 'installed' : 'not-running'
+                };
+                detectedServices.unshift(ollamaService);
+            }
+
+            selectedService = ollamaService;
+            if ((ollamaService.models || []).length > 0) {
+                const useLocal = confirm(`检测到 ${ollamaService.models.length} 个本地 Ollama 模型。\n\n是否直接使用本地模型？\n选择“取消”将进入 Qwen 系列模型推荐下载。`);
+                if (useLocal) {
+                    showModelSelection();
+                } else {
+                    showInstallOptions();
+                }
+            } else {
+                showInstallOptions();
             }
         }
 
@@ -760,6 +785,7 @@
             listEl.innerHTML = '';
             noServiceEl.style.display = 'none';
             installBtn.style.display = 'none';
+            installBtn.onclick = showInstallOptions;
 
             // If only one service detected, auto-select it
             if (detectedServices.length === 1) {
@@ -801,7 +827,19 @@
             showStep('step-select-service');
             document.getElementById('service-list').style.display = 'none';
             document.getElementById('no-service').style.display = 'block';
-            document.getElementById('btn-install-ollama').style.display = 'inline-flex';
+            const installBtn = document.getElementById('btn-install-ollama');
+            installBtn.style.display = 'inline-flex';
+            installBtn.onclick = installOllamaFromNoService;
+        }
+
+        async function installOllamaFromNoService() {
+            const result = await ipcRenderer.invoke('ai-download-ollama');
+            if (result.success) {
+                alert('已打开 Ollama 下载页面。安装完成并启动 Ollama 后，请重新进入 Chat。');
+                ipcRenderer.send('setup-complete');
+            } else {
+                alert('无法打开 Ollama 下载页面: ' + result.message);
+            }
         }
 
         // Show install options (small/medium/large)
@@ -931,6 +969,45 @@
             listEl.innerHTML = '';
 
             if (selectedService.provider === 'ollama') {
+                const localModels = selectedService.models || [];
+                if (localModels.length === 0) {
+                    showInstallOptions();
+                    return;
+                }
+
+                localModels.forEach((model, index) => {
+                    const item = document.createElement('label');
+                    const modelId = model.name || model.id || model.model;
+                    item.className = 'model-item';
+                    item.htmlFor = `model-${index}`;
+                    item.innerHTML = `
+                        <div class="custom-checkbox-wrapper">
+                            <input type="checkbox" id="model-${index}" name="model" value="${modelId}" onchange="handleModelSelect('${modelId}', this)">
+                            <span class="custom-checkbox"></span>
+                            <div style="flex: 1;">
+                                <div class="model-name">${modelId}</div>
+                                <div class="model-desc">本地已安装模型</div>
+                            </div>
+                            <div class="model-size">${model.size || ''}</div>
+                        </div>
+                    `;
+                    listEl.appendChild(item);
+                });
+
+                if (localModels.length === 1) {
+                    const modelId = localModels[0].name || localModels[0].id || localModels[0].model;
+                    setTimeout(() => {
+                        const checkbox = document.querySelector(`input[value="${modelId}"]`);
+                        if (checkbox) {
+                            checkbox.checked = true;
+                            handleModelSelect(modelId, checkbox);
+                        }
+                    }, 100);
+                }
+                return;
+            }
+
+            if (selectedService.provider === 'ollama') {
                 // Show recommended models for Ollama
                 const ollamaModels = providers.ollama.models;
                 
@@ -1045,7 +1122,7 @@
 
         // Confirm model selection
         async function confirmModel() {
-            const isInstalled = selectedService.models.some(m => m.name === selectedModel);
+            const isInstalled = selectedService.models.some(m => (m.name || m.id || m.model) === selectedModel);
             
             if (!isInstalled && selectedService.provider === 'ollama') {
                 // Need to download model
@@ -1058,20 +1135,37 @@
 
         // Download model
         async function downloadModel(modelName) {
+            selectedModel = modelName;
             showStep('step-downloading');
             
             const progressEl = document.getElementById('download-progress');
             const textEl = document.getElementById('download-text');
             
             textEl.textContent = `正在下载 ${modelName}...`;
-            progressEl.style.width = '10%';
+            progressEl.style.width = '0%';
             
-            // Simulate progress (actual download happens in main process)
+            const onProgress = (event, progress) => {
+                if (!progress || progress.modelName !== modelName) return;
+
+                if (typeof progress.percent === 'number') {
+                    const percent = Math.max(0, Math.min(100, progress.percent));
+                    progressEl.style.width = `${percent}%`;
+                }
+
+                if (progress.status) {
+                    textEl.textContent = progress.status;
+                }
+            };
+
+            ipcRenderer.on('ai-pull-model-progress', onProgress);
             const result = await ipcRenderer.invoke('ai-pull-model', modelName);
+            ipcRenderer.removeListener('ai-pull-model-progress', onProgress);
             
             if (result.success) {
                 progressEl.style.width = '100%';
+                textEl.textContent = '下载完成。';
                 textEl.textContent = '下载完成！';
+                textEl.textContent = '下载完成。';
                 setTimeout(() => saveConfigAndTest(), 500);
             } else {
                 alert('下载失败: ' + result.message);
@@ -1132,7 +1226,7 @@
             
             // Set default values
             document.getElementById('manual-endpoint').value = 'http://127.0.0.1:11434';
-            document.getElementById('manual-model').value = 'qwen2.5:7b';
+            document.getElementById('manual-model').value = '';
         }
 
         // Test manual config

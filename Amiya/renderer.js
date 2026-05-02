@@ -332,6 +332,8 @@ let chatInputWrapper = null;
 let exitChatBtn = null;
 let aiBubble = null;
 let aiLoadingSpinner = null;
+let pendingChatAfterSetup = false;
+let chatActivationInProgress = false;
 let screenWidth = 1920;
 let screenHeight = 1080;
 let currentAnimation = null;
@@ -341,7 +343,6 @@ const DRAG_THRESHOLD = 5;
 
 const CONTEXT_MENU_ITEMS = [
     { id: 'chat', label: 'Chat' },
-    { id: 'todo', label: 'Todo list' },
     { id: 'schedule', label: 'Schedule' },
     { id: 'memo', label: 'Memo' },
     { id: 'reminder', label: 'Reminder' },
@@ -516,28 +517,64 @@ async function onContextMenuAction(actionId) {
         return;
     }
     if (actionId === 'chat') {
-        // Check if AI is configured
-        const configResult = await ipcRenderer.invoke('ai-get-config');
-        if (configResult.isFirstRun || !configResult.isConfigured) {
-            // Show setup window first
-            ipcRenderer.send('show-setup-window');
-            hideContextMenu();
-            return;
-        }
-
-        // Show system notification when entering chat mode
-        showChatUI(true, true);
+        await enterChatWhenAIReady();
         hideContextMenu();
         return;
     }
-    if (actionId === 'todo') {
-        // Open Todo List window
-        ipcRenderer.send('open-todo-window');
+    if (actionId === 'schedule') {
+        ipcRenderer.send('open-schedule-window');
+        hideContextMenu();
+        return;
+    }
+    if (actionId === 'memo') {
+        ipcRenderer.send('open-memo-window');
+        hideContextMenu();
+        return;
+    }
+    if (actionId === 'reminder') {
+        ipcRenderer.send('open-reminder-window');
         hideContextMenu();
         return;
     }
     // TODO: implement actual feature behavior for each action
 }
+
+async function enterChatWhenAIReady() {
+    if (chatVisible || chatActivationInProgress) return;
+
+    chatActivationInProgress = true;
+    try {
+        const configResult = await ipcRenderer.invoke('ai-get-config');
+        if (configResult.isFirstRun || !configResult.isConfigured || !configResult.model) {
+            pendingChatAfterSetup = true;
+            ipcRenderer.send('show-setup-window');
+            return;
+        }
+
+        const connectionResult = await ipcRenderer.invoke('ai-test-connection', configResult);
+        if (!connectionResult.success) {
+            pendingChatAfterSetup = true;
+            showAIBubble(connectionResult.message || 'AI service is not ready.', true);
+            ipcRenderer.send('show-setup-window');
+            return;
+        }
+
+        pendingChatAfterSetup = false;
+        showChatUI(true, true);
+    } catch (error) {
+        pendingChatAfterSetup = true;
+        showAIBubble(error.message || 'AI service is not ready.', true);
+        ipcRenderer.send('show-setup-window');
+    } finally {
+        chatActivationInProgress = false;
+    }
+}
+
+ipcRenderer.on('ai-setup-complete', () => {
+    if (pendingChatAfterSetup) {
+        enterChatWhenAIReady();
+    }
+});
 
 function showChatUI(playRelaxAnimation = true, showTakeoverMessage = false) {
     if (chatVisible) return;
@@ -618,6 +655,11 @@ function showSystemNotification() {
             </div>
         </div>
     `;
+
+    const iconEl = systemNotification.querySelector('.notification-icon');
+    const subtitleEl = systemNotification.querySelector('.notification-subtitle');
+    if (iconEl) iconEl.textContent = '✓';
+    if (subtitleEl) subtitleEl.textContent = '干员阿米娅已接管系统';
 
     // Position notification above the model
     updateNotificationPosition();

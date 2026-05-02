@@ -3,6 +3,9 @@ const path = require('path');
 const fs = require('fs');
 const { AIConfigManager } = require('./ai-config');
 const { TodoManager } = require('./todo-manager');
+const { MemoManager } = require('./memo-manager');
+const { ReminderManager } = require('./reminder-manager');
+const { AIToolRegistry } = require('./ai-tools');
 
 process.env['ELECTRON_DISABLE_SECURITY_WARNINGS'] = 'true';
 
@@ -10,9 +13,14 @@ let mainWindow = null;
 let tray = null;
 let chatWindow = null;
 let setupWindow = null;
-let todoWindow = null;
+let scheduleWindow = null;
+let memoWindow = null;
+let reminderWindow = null;
 let aiConfigManager = null;
-let todoManager = null;
+let scheduleManager = null;
+let memoManager = null;
+let reminderManager = null;
+let aiToolRegistry = null;
 
 // Load system prompt
 let systemPrompt = '';
@@ -63,16 +71,16 @@ ipcMain.on('open-chat-window', () => {
     });
 });
 
-ipcMain.on('open-todo-window', () => {
-    if (todoWindow && !todoWindow.isDestroyed()) {
-        todoWindow.focus();
+ipcMain.on('open-schedule-window', () => {
+    if (scheduleWindow && !scheduleWindow.isDestroyed()) {
+        scheduleWindow.focus();
         return;
     }
 
-    todoWindow = new BrowserWindow({
+    scheduleWindow = new BrowserWindow({
         width: 900,
         height: 700,
-        title: 'Amiya - Todo List',
+        title: 'Amiya - Schedule',
         webPreferences: {
             nodeIntegration: true,
             contextIsolation: false
@@ -84,10 +92,66 @@ ipcMain.on('open-todo-window', () => {
         backgroundColor: '#1a1a2e'
     });
 
-    todoWindow.loadFile(path.join(__dirname, 'todo.html'));
+    scheduleWindow.loadFile(path.join(__dirname, 'todo.html'));
 
-    todoWindow.on('closed', () => {
-        todoWindow = null;
+    scheduleWindow.on('closed', () => {
+        scheduleWindow = null;
+    });
+});
+
+ipcMain.on('open-memo-window', () => {
+    if (memoWindow && !memoWindow.isDestroyed()) {
+        memoWindow.focus();
+        return;
+    }
+
+    memoWindow = new BrowserWindow({
+        width: 760,
+        height: 640,
+        title: 'Amiya - Memo',
+        webPreferences: {
+            nodeIntegration: true,
+            contextIsolation: false
+        },
+        resizable: true,
+        minimizable: true,
+        maximizable: true,
+        closable: true,
+        backgroundColor: '#f7f4ef'
+    });
+
+    memoWindow.loadFile(path.join(__dirname, 'memo.html'));
+
+    memoWindow.on('closed', () => {
+        memoWindow = null;
+    });
+});
+
+ipcMain.on('open-reminder-window', () => {
+    if (reminderWindow && !reminderWindow.isDestroyed()) {
+        reminderWindow.focus();
+        return;
+    }
+
+    reminderWindow = new BrowserWindow({
+        width: 760,
+        height: 620,
+        title: 'Amiya - Reminder',
+        webPreferences: {
+            nodeIntegration: true,
+            contextIsolation: false
+        },
+        resizable: true,
+        minimizable: true,
+        maximizable: true,
+        closable: true,
+        backgroundColor: '#f8fafc'
+    });
+
+    reminderWindow.loadFile(path.join(__dirname, 'reminder.html'));
+
+    reminderWindow.on('closed', () => {
+        reminderWindow = null;
     });
 });
 
@@ -100,6 +164,9 @@ ipcMain.on('setup-complete', () => {
     // If main window is not created yet, create it
     if (!mainWindow || mainWindow.isDestroyed()) {
         createMainWindow();
+    }
+    if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send('ai-setup-complete');
     }
 });
 
@@ -120,7 +187,229 @@ function getAIConfig() {
     return aiConfigManager ? aiConfigManager.getConfig() : {
         provider: 'ollama',
         endpoint: 'http://127.0.0.1:11434',
-        model: 'qwen2.5:3b'
+        model: ''
+    };
+}
+
+function trimTrailingSlashes(url) {
+    return String(url || '').trim().replace(/\/+$/, '');
+}
+
+function getOpenAICompatibleChatUrl(endpoint) {
+    const baseUrl = trimTrailingSlashes(endpoint);
+    return baseUrl.endsWith('/v1') ? `${baseUrl}/chat/completions` : `${baseUrl}/v1/chat/completions`;
+}
+
+function buildChatPrompt(history, includeTools = true) {
+    let fullPrompt = '';
+    if (systemPrompt) {
+        fullPrompt = `${systemPrompt}\n\n`;
+    }
+
+    fullPrompt += '以下是博士和阿米娅的对话。请只以阿米娅的身份回复最后一句话，不要生成其他内容。\n';
+    if (includeTools && aiToolRegistry) {
+        fullPrompt += aiToolRegistry.getToolPrompt();
+    }
+    fullPrompt += '\n';
+
+    for (const msg of history) {
+        if (msg.role === 'user') {
+            fullPrompt += `博士：${msg.content}\n`;
+        } else {
+            fullPrompt += `阿米娅：${msg.content}\n`;
+        }
+    }
+
+    fullPrompt += '阿米娅：';
+    return fullPrompt;
+}
+
+async function callAI(config, prompt, messages = null) {
+    const endpoint = trimTrailingSlashes(config.endpoint || 'http://127.0.0.1:11434');
+    const model = String(config.model || '').trim();
+    if (!model) {
+        throw new Error('No AI model selected. Please configure a model first.');
+    }
+
+    let apiUrl;
+    let requestBody;
+
+    if (config.provider === 'ollama') {
+        apiUrl = `${endpoint}/api/generate`;
+        requestBody = {
+            model,
+            prompt,
+            stream: false
+        };
+    } else if (config.provider === 'lmstudio' || config.provider === 'openai' || config.provider === 'custom') {
+        apiUrl = getOpenAICompatibleChatUrl(endpoint);
+        requestBody = {
+            model,
+            messages: messages || [
+                { role: 'system', content: systemPrompt },
+                { role: 'user', content: prompt }
+            ],
+            stream: false
+        };
+    } else {
+        apiUrl = `${endpoint}/api/generate`;
+        requestBody = {
+            model,
+            prompt,
+            stream: false
+        };
+    }
+
+    const headers = { 'Content-Type': 'application/json' };
+    if (config.apiKey) {
+        headers['Authorization'] = `Bearer ${config.apiKey}`;
+    }
+
+    const response = await fetch(apiUrl, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(requestBody)
+    });
+
+    if (!response.ok) {
+        const errorText = await response.text();
+        let errorMessage = errorText;
+        try {
+            errorMessage = JSON.parse(errorText).error || errorText;
+        } catch {
+            // Keep raw service response text.
+        }
+        if (config.provider === 'ollama' && response.status === 404 && errorMessage.includes('not found')) {
+            throw new Error(`Ollama model "${model}" is not installed. Run: ollama pull ${model}`);
+        }
+        throw new Error(`AI service response ${response.status}: ${errorMessage}`);
+    }
+
+    const data = await response.json();
+    return config.provider === 'ollama'
+        ? (data.response || '')
+        : (data.choices?.[0]?.message?.content || '');
+}
+
+function cleanAIResponse(rawResponse) {
+    let cleanedResponse = String(rawResponse || '').trim();
+
+    if (cleanedResponse.startsWith('阿米娅：')) {
+        cleanedResponse = cleanedResponse.substring(4).trim();
+    }
+    if (cleanedResponse.startsWith('博士：')) {
+        cleanedResponse = cleanedResponse.substring(3).trim();
+    }
+
+    const lines = cleanedResponse.split('\n');
+    const validLines = lines.filter(line => !line.trim().startsWith('博士：') && !line.trim().startsWith('阿米娅：'));
+    return validLines.join('\n').trim();
+}
+
+async function maybeExecuteAITool(config, rawResponse, history) {
+    if (!aiToolRegistry) {
+        return null;
+    }
+
+    const toolCall = aiToolRegistry.parseToolCall(rawResponse);
+    if (!toolCall) {
+        return null;
+    }
+
+    const result = aiToolRegistry.execute(toolCall);
+    const toolResult = {
+        tool: toolCall.tool,
+        args: toolCall.args || {},
+        result
+    };
+
+    const followupPrompt = `${systemPrompt || ''}\n\n你刚刚调用了本地工具，执行结果如下：\n${JSON.stringify(toolResult, null, 2)}\n\n请用阿米娅的口吻向博士简短说明结果。不要输出 JSON。`;
+    const followupMessages = [
+        { role: 'system', content: systemPrompt },
+        ...history.map(msg => ({
+            role: msg.role === 'user' ? 'user' : 'assistant',
+            content: msg.content
+        })),
+        { role: 'assistant', content: JSON.stringify(toolCall) },
+        { role: 'user', content: `工具执行结果：${JSON.stringify(toolResult)}` }
+    ];
+
+    try {
+        return {
+            toolResult,
+            response: await callAI(config, followupPrompt, followupMessages)
+        };
+    } catch {
+        return {
+            toolResult,
+            response: `博士，已经处理好了：${toolCall.tool}。`
+        };
+    }
+}
+
+function buildToolChatPrompt(history, includeTools = true) {
+    let prompt = systemPrompt ? `${systemPrompt}\n\n` : '';
+    prompt += 'Conversation between Doctor and Amiya. Reply as Amiya only.\n';
+    if (includeTools && aiToolRegistry) {
+        prompt += aiToolRegistry.getToolPrompt();
+    }
+    prompt += '\n';
+
+    for (const msg of history) {
+        prompt += `${msg.role === 'user' ? 'Doctor' : 'Amiya'}: ${msg.content}\n`;
+    }
+
+    prompt += 'Amiya:';
+    return prompt;
+}
+
+function cleanToolAIResponse(rawResponse) {
+    let text = String(rawResponse || '').trim();
+    for (const prefix of ['Amiya:', 'Doctor:', '阿米娅：', '博士：']) {
+        if (text.startsWith(prefix)) {
+            text = text.substring(prefix.length).trim();
+        }
+    }
+    return text
+        .split('\n')
+        .filter(line => {
+            const trimmed = line.trim();
+            return !trimmed.startsWith('Amiya:') &&
+                !trimmed.startsWith('Doctor:') &&
+                !trimmed.startsWith('阿米娅：') &&
+                !trimmed.startsWith('博士：');
+        })
+        .join('\n')
+        .trim();
+}
+
+async function maybeExecuteAIToolSafe(config, rawResponse, history) {
+    if (!aiToolRegistry) return null;
+
+    const toolCall = aiToolRegistry.parseToolCall(rawResponse);
+    if (!toolCall) return null;
+
+    const result = aiToolRegistry.execute(toolCall);
+    const toolResult = {
+        tool: toolCall.tool,
+        args: toolCall.args || {},
+        result
+    };
+
+    const followupPrompt = `${systemPrompt || ''}\n\nA local tool was executed. Result:\n${JSON.stringify(toolResult, null, 2)}\n\nReply to Doctor briefly as Amiya. Do not output JSON.`;
+    const followupMessages = [
+        { role: 'system', content: systemPrompt },
+        ...history.map(msg => ({
+            role: msg.role === 'user' ? 'user' : 'assistant',
+            content: msg.content
+        })),
+        { role: 'assistant', content: JSON.stringify(toolCall) },
+        { role: 'user', content: `Tool result: ${JSON.stringify(toolResult)}` }
+    ];
+
+    return {
+        toolResult,
+        response: await callAI(config, followupPrompt, followupMessages)
     };
 }
 
@@ -133,6 +422,25 @@ ipcMain.handle('ollama-generate', async (event, message, sessionId = 'default') 
         
         // Add user message to history
         history.push({ role: 'user', content: message });
+
+        const prompt = buildToolChatPrompt(history, true);
+        const rawToolAwareResponse = await callAI(config, prompt);
+        const toolExecution = await maybeExecuteAIToolSafe(config, rawToolAwareResponse, history);
+        const toolAwareCleanedResponse = cleanToolAIResponse(toolExecution ? toolExecution.response : rawToolAwareResponse);
+
+        history.push({ role: 'assistant', content: toolAwareCleanedResponse });
+
+        if (history.length > 20) {
+            history = history.slice(-20);
+        }
+
+        conversationHistory.set(sessionId, history);
+
+        return {
+            success: true,
+            response: toolAwareCleanedResponse,
+            toolResult: toolExecution ? toolExecution.toolResult : null
+        };
         
         // Build prompt with system prompt and history
         // Use a clear instruction format to prevent model confusion
@@ -156,8 +464,11 @@ ipcMain.handle('ollama-generate', async (event, message, sessionId = 'default') 
         fullPrompt += '阿米娅：';
         
         // Use configured endpoint and model
-        const endpoint = config.endpoint || 'http://127.0.0.1:11434';
-        const model = config.model || 'qwen2.5:3b';
+        const endpoint = trimTrailingSlashes(config.endpoint || 'http://127.0.0.1:11434');
+        const model = String(config.model || '').trim();
+        if (!model) {
+            throw new Error('No AI model selected. Please configure a model first.');
+        }
         
         let apiUrl;
         let requestBody;
@@ -171,7 +482,7 @@ ipcMain.handle('ollama-generate', async (event, message, sessionId = 'default') 
             };
         } else if (config.provider === 'lmstudio' || config.provider === 'openai' || config.provider === 'custom') {
             // OpenAI compatible API
-            apiUrl = `${endpoint}/v1/chat/completions`;
+            apiUrl = getOpenAICompatibleChatUrl(endpoint);
             requestBody = {
                 model: model,
                 messages: [
@@ -206,7 +517,16 @@ ipcMain.handle('ollama-generate', async (event, message, sessionId = 'default') 
 
         if (!response.ok) {
             const errorText = await response.text();
-            throw new Error(`AI service response ${response.status}: ${errorText}`);
+            let errorMessage = errorText;
+            try {
+                errorMessage = JSON.parse(errorText).error || errorText;
+            } catch {
+                // Keep the raw response text when the service does not return JSON.
+            }
+            if (config.provider === 'ollama' && response.status === 404 && errorMessage.includes('not found')) {
+                throw new Error(`Ollama model "${model}" is not installed. Run: ollama pull ${model}`);
+            }
+            throw new Error(`AI service response ${response.status}: ${errorMessage}`);
         }
 
         const data = await response.json();
@@ -440,8 +760,11 @@ app.whenReady().then(() => {
     // Initialize AI config manager
     aiConfigManager = new AIConfigManager(app.getPath('userData'));
     
-    // Initialize Todo manager
-    todoManager = new TodoManager(app.getPath('userData'));
+    // Initialize schedule and memo managers
+    scheduleManager = new TodoManager(app.getPath('userData'));
+    memoManager = new MemoManager(app.getPath('userData'));
+    reminderManager = new ReminderManager(app.getPath('userData'));
+    aiToolRegistry = new AIToolRegistry({ scheduleManager, memoManager, reminderManager });
     
     // Always create main window on startup
     createMainWindow();

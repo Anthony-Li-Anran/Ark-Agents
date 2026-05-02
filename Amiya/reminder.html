@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Amiya - Reminder</title>
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            min-height: 100vh;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei", sans-serif;
+            background: #f8fafc;
+            color: #172033;
+        }
+        .shell {
+            max-width: 860px;
+            margin: 0 auto;
+            padding: 24px;
+        }
+        .header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 20px;
+        }
+        h1 {
+            margin: 0;
+            font-size: 24px;
+        }
+        .subtitle {
+            margin-top: 6px;
+            color: #64748b;
+            font-size: 13px;
+        }
+        .grid {
+            display: grid;
+            gap: 14px;
+        }
+        .card {
+            background: white;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 16px;
+            display: grid;
+            grid-template-columns: 1fr auto;
+            gap: 14px;
+            align-items: start;
+            box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
+        }
+        .title-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 6px;
+        }
+        .icon {
+            width: 34px;
+            height: 34px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #eef2ff;
+            font-size: 18px;
+        }
+        .title {
+            font-size: 17px;
+            font-weight: 700;
+        }
+        .message {
+            color: #475569;
+            font-size: 13px;
+            margin-bottom: 12px;
+        }
+        .controls {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        .frequency {
+            width: 92px;
+            height: 34px;
+            border: 1px solid #cbd5e1;
+            border-radius: 8px;
+            padding: 0 10px;
+        }
+        .unit {
+            color: #64748b;
+            font-size: 13px;
+        }
+        .meta {
+            color: #64748b;
+            font-size: 12px;
+            margin-top: 10px;
+        }
+        .actions {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            gap: 10px;
+        }
+        .toggle {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 13px;
+            color: #334155;
+        }
+        .toggle input {
+            width: 18px;
+            height: 18px;
+        }
+        button {
+            height: 34px;
+            border: 0;
+            border-radius: 8px;
+            padding: 0 12px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        .save {
+            color: white;
+            background: #2563eb;
+        }
+        .ghost {
+            color: #334155;
+            background: #e2e8f0;
+        }
+        .toast {
+            position: fixed;
+            right: 20px;
+            bottom: 20px;
+            background: #0f172a;
+            color: white;
+            padding: 10px 14px;
+            border-radius: 8px;
+            opacity: 0;
+            transform: translateY(8px);
+            transition: 0.2s;
+            pointer-events: none;
+        }
+        .toast.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    </style>
+</head>
+<body>
+    <div class="shell">
+        <div class="header">
+            <div>
+                <h1>Reminder</h1>
+                <div class="subtitle">默认提醒喝水、活动身体、保护眼睛，也可以调整频率。</div>
+            </div>
+            <button class="ghost" onclick="loadReminders()">刷新</button>
+        </div>
+        <div class="grid" id="reminder-list"></div>
+    </div>
+    <div class="toast" id="toast"></div>
+
+    <script>
+        const { ipcRenderer } = require('electron');
+
+        const icons = {
+            water: '💧',
+            stand: '🧍',
+            eyes: '👁'
+        };
+
+        let reminders = [];
+
+        async function loadReminders() {
+            reminders = await ipcRenderer.invoke('reminder-get-all');
+            renderReminders();
+        }
+
+        function renderReminders() {
+            const list = document.getElementById('reminder-list');
+            list.innerHTML = reminders.map(reminder => `
+                <section class="card">
+                    <div>
+                        <div class="title-row">
+                            <div class="icon">${icons[reminder.id] || '⏰'}</div>
+                            <div class="title">${escapeHtml(reminder.title)}</div>
+                        </div>
+                        <div class="message">${escapeHtml(reminder.message)}</div>
+                        <div class="controls">
+                            <input class="frequency" id="freq-${reminder.id}" type="number" min="1" value="${reminder.frequencyMinutes}">
+                            <span class="unit">分钟提醒一次</span>
+                            <button class="save" onclick="saveReminder('${reminder.id}')">保存</button>
+                            <button class="ghost" onclick="resetReminder('${reminder.id}')">重置计时</button>
+                            <button class="ghost" onclick="triggerNow('${reminder.id}')">立即提醒</button>
+                        </div>
+                        <div class="meta">
+                            下次提醒：${formatDate(reminder.nextTriggerAt)}
+                            ${reminder.lastTriggeredAt ? ` · 上次提醒：${formatDate(reminder.lastTriggeredAt)}` : ''}
+                        </div>
+                    </div>
+                    <div class="actions">
+                        <label class="toggle">
+                            <input id="enabled-${reminder.id}" type="checkbox" ${reminder.enabled ? 'checked' : ''} onchange="saveReminder('${reminder.id}')">
+                            启用
+                        </label>
+                    </div>
+                </section>
+            `).join('');
+        }
+
+        async function saveReminder(id) {
+            const frequency = Number(document.getElementById(`freq-${id}`).value || 1);
+            const enabled = document.getElementById(`enabled-${id}`).checked;
+            await ipcRenderer.invoke('reminder-update', id, {
+                frequencyMinutes: Math.max(1, frequency),
+                enabled
+            });
+            await loadReminders();
+            showToast('提醒设置已保存');
+        }
+
+        async function resetReminder(id) {
+            await ipcRenderer.invoke('reminder-reset', id);
+            await loadReminders();
+            showToast('计时已重置');
+        }
+
+        async function triggerNow(id) {
+            await ipcRenderer.invoke('reminder-trigger-now', id);
+            await loadReminders();
+            showToast('已发送提醒');
+        }
+
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.classList.add('visible');
+            setTimeout(() => toast.classList.remove('visible'), 1800);
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text || '';
+            return div.innerHTML;
+        }
+
+        function formatDate(value) {
+            if (!value) return '未安排';
+            return new Date(value).toLocaleString('zh-CN');
+        }
+
+        loadReminders();
+    </script>
+</body>
+</html>
