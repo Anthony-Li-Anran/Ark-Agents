@@ -89,10 +89,38 @@ function setSelectedOperator(operatorId, checked) {
     if (checkbox) checkbox.checked = checked;
 }
 
+function setOperatorDisabled(operatorId, disabled) {
+    if (!panel) return;
+    const checkbox = panel.querySelector(`#operator-${operatorId}`);
+    if (checkbox) {
+        checkbox.disabled = disabled;
+        const label = panel.querySelector(`label[for="operator-${operatorId}"]`);
+        if (label) {
+            label.style.opacity = disabled ? '0.5' : '1';
+            label.style.cursor = disabled ? 'not-allowed' : 'pointer';
+        }
+    }
+}
+
+function setAllOperatorsDisabled(disabled) {
+    if (!panel) return;
+    const checkboxes = panel.querySelectorAll('input[type="checkbox"]');
+    checkboxes.forEach(checkbox => {
+        checkbox.disabled = disabled;
+        const label = panel.querySelector(`label[for="${checkbox.id}"]`);
+        if (label) {
+            label.style.opacity = disabled ? '0.5' : '1';
+            label.style.cursor = disabled ? 'not-allowed' : 'pointer';
+        }
+    });
+}
+
 module.exports = {
     create,
     show,
     hide,
     isVisible,
-    setSelectedOperator
+    setSelectedOperator,
+    setOperatorDisabled,
+    setAllOperatorsDisabled
 };

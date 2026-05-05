@@ -78,6 +78,7 @@ let systemNotification = null;
 let contextMenuVisible = false;
 let contextMenuInteraction = false;
 let selectedOperators = new Set();
+let loadingOperators = new Set(); // Track operators currently loading/unloading
 
 // Use scriptDir for reliable path resolution in Electron renderer
 // scriptDir points to scripts/renderer/, so we need to go up 2 levels to reach project root
@@ -313,15 +314,33 @@ function showOperatorPanel() {
     operatorPanel.show({
         operators,
         onToggle: async (operatorId, checked) => {
+            // Prevent rapid clicking - check if already loading/unloading
+            if (loadingOperators.has(operatorId)) {
+                console.log(`[Renderer] Operator ${operatorId} is already loading/unloading, ignoring click`);
+                operatorPanel.setSelectedOperator(operatorId, !checked);
+                return;
+            }
+
             try {
+                // Mark as loading
+                loadingOperators.add(operatorId);
+                operatorPanel.setOperatorDisabled(operatorId, true);
+
                 if (checked) {
-                    await showOperatorCharacter(operatorId);
+                    const success = await showOperatorCharacter(operatorId);
+                    if (!success) {
+                        operatorPanel.setSelectedOperator(operatorId, false);
+                    }
                 } else {
                     hideOperatorCharacter(operatorId);
                 }
             } catch (error) {
                 console.error(`[Renderer] Error toggling operator ${operatorId}:`, error);
                 operatorPanel.setSelectedOperator(operatorId, !checked);
+            } finally {
+                // Remove from loading set and re-enable checkbox
+                loadingOperators.delete(operatorId);
+                operatorPanel.setOperatorDisabled(operatorId, false);
             }
         },
         position: contextMenu.getElement()?.getBoundingClientRect(),
