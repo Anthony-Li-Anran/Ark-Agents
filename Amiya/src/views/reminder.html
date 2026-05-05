@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Amiya - Reminder</title>
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            min-height: 100vh;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei", sans-serif;
+            background: #f8fafc;
+            color: #172033;
+        }
+        .shell {
+            max-width: 860px;
+            margin: 0 auto;
+            padding: 24px;
+        }
+        .header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 20px;
+        }
+        h1 {
+            margin: 0;
+            font-size: 24px;
+        }
+        .subtitle {
+            margin-top: 6px;
+            color: #64748b;
+            font-size: 13px;
+        }
+        .grid {
+            display: grid;
+            gap: 14px;
+        }
+        .card {
+            background: white;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 16px;
+            display: grid;
+            grid-template-columns: 1fr auto;
+            gap: 14px;
+            align-items: start;
+            box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
+        }
+        .title-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 6px;
+        }
+        .icon {
+            width: 34px;
+            height: 34px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #eef2ff;
+            font-size: 18px;
+        }
+        .title {
+            font-size: 17px;
+            font-weight: 700;
+        }
+        .message {
+            color: #475569;
+            font-size: 13px;
+            margin-bottom: 12px;
+        }
+        .controls {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        .frequency {
+            width: 92px;
+            height: 34px;
+            border: 1px solid #cbd5e1;
+            border-radius: 8px;
+            padding: 0 10px;
+        }
+        .unit {
+            color: #64748b;
+            font-size: 13px;
+        }
+        .meta {
+            color: #64748b;
+            font-size: 12px;
+            margin-top: 10px;
+        }
+        .actions {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            gap: 10px;
+        }
+        .toggle {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 13px;
+            color: #334155;
+        }
+        .toggle input {
+            width: 18px;
+            height: 18px;
+        }
+        button {
+            height: 34px;
+            border: 0;
+            border-radius: 8px;
+            padding: 0 12px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        .save {
+            color: white;
+            background: #2563eb;
+        }
+        .ghost {
+            color: #334155;
+            background: #e2e8f0;
+        }
+        .delete-btn {
+            color: white;
+            background: #dc2626;
+        }
+        .new-btn {
+            color: white;
+            background: #10b981;
+        }
+        .toast {
+            position: fixed;
+            right: 20px;
+            bottom: 20px;
+            background: #0f172a;
+            color: white;
+            padding: 10px 14px;
+            border-radius: 8px;
+            opacity: 0;
+            transform: translateY(8px);
+            transition: 0.2s;
+            pointer-events: none;
+        }
+        .toast.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+        .modal.visible {
+            display: flex;
+        }
+        .modal-content {
+            background: white;
+            padding: 24px;
+            border-radius: 12px;
+            width: 400px;
+            max-width: 90%;
+        }
+        .modal-title {
+            font-size: 18px;
+            font-weight: 700;
+            margin-bottom: 16px;
+        }
+        .form-group {
+            margin-bottom: 14px;
+        }
+        .form-group label {
+            display: block;
+            font-size: 13px;
+            color: #64748b;
+            margin-bottom: 6px;
+        }
+        .form-group input, .form-group textarea {
+            width: 100%;
+            height: 36px;
+            border: 1px solid #cbd5e1;
+            border-radius: 8px;
+            padding: 0 12px;
+            font-size: 14px;
+        }
+        .form-group textarea {
+            height: 80px;
+            padding: 10px 12px;
+            resize: none;
+        }
+        .modal-actions {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="shell">
+        <div class="header">
+            <div>
+                <h1>Reminder</h1>
+                <div class="subtitle">周期性提醒：喝水、休息、活动等。一次性事件请使用 Schedule。</div>
+            </div>
+            <div style="display: flex; gap: 10px;">
+                <button class="new-btn" onclick="openNewModal()">新建提醒</button>
+                <button class="ghost" onclick="loadReminders()">刷新</button>
+            </div>
+        </div>
+        <div class="grid" id="reminder-list"></div>
+    </div>
+    <div class="toast" id="toast"></div>
+    
+    <div class="modal" id="new-modal">
+        <div class="modal-content">
+            <div class="modal-title">新建周期性提醒</div>
+            <div class="form-group">
+                <label>标题</label>
+                <input type="text" id="new-title" placeholder="例如：喝水提醒">
+            </div>
+            <div class="form-group">
+                <label>提醒内容</label>
+                <textarea id="new-message" placeholder="例如：博士，该喝水了。"></textarea>
+            </div>
+            <div class="form-group">
+                <label>间隔（分钟）</label>
+                <input type="number" id="new-frequency" value="60" min="1">
+            </div>
+            <div class="modal-actions">
+                <button class="ghost" onclick="closeNewModal()">取消</button>
+                <button class="save" onclick="createReminder()">创建</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const { ipcRenderer } = require('electron');
+
+        const icons = {
+            water: '💧',
+            stand: '🧍',
+            eyes: '👁'
+        };
+
+        let reminders = [];
+
+        async function loadReminders() {
+            reminders = await ipcRenderer.invoke('reminder-get-all');
+            renderReminders();
+        }
+
+        function renderReminders() {
+            const list = document.getElementById('reminder-list');
+            if (reminders.length === 0) {
+                list.innerHTML = `
+                    <div style="text-align: center; padding: 40px; color: #64748b;">
+                        <div style="font-size: 48px; margin-bottom: 16px;">⏰</div>
+                        <p>暂无周期性提醒</p>
+                        <p style="font-size: 12px; margin-top: 8px;">点击"新建提醒"创建一个</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            list.innerHTML = reminders.map(reminder => `
+                <section class="card">
+                    <div>
+                        <div class="title-row">
+                            <div class="icon">${icons[reminder.id] || '⏰'}</div>
+                            <div class="title">${escapeHtml(reminder.title)}</div>
+                        </div>
+                        <div class="message">${escapeHtml(reminder.message)}</div>
+                        <div class="controls">
+                            <input class="frequency" id="freq-${reminder.id}" type="number" min="1" value="${reminder.frequencyMinutes}">
+                            <span class="unit">分钟提醒一次</span>
+                            <button class="save" onclick="saveReminder('${reminder.id}')">保存</button>
+                            <button class="ghost" onclick="resetReminder('${reminder.id}')">重置</button>
+                            <button class="ghost" onclick="triggerNow('${reminder.id}')">立即提醒</button>
+                        </div>
+                        <div class="meta">
+                            下次：${formatDate(reminder.nextTriggerAt)}
+                            ${reminder.lastTriggeredAt ? ` · 上次：${formatDate(reminder.lastTriggeredAt)}` : ''}
+                        </div>
+                    </div>
+                    <div class="actions">
+                        <label class="toggle">
+                            <input id="enabled-${reminder.id}" type="checkbox" ${reminder.enabled ? 'checked' : ''} onchange="saveReminder('${reminder.id}')">
+                            启用
+                        </label>
+                        <button class="delete-btn" onclick="deleteReminder('${reminder.id}')">删除</button>
+                    </div>
+                </section>
+            `).join('');
+        }
+
+        async function saveReminder(id) {
+            const frequency = Number(document.getElementById(`freq-${id}`).value || 1);
+            const enabled = document.getElementById(`enabled-${id}`).checked;
+            await ipcRenderer.invoke('reminder-update', id, {
+                frequencyMinutes: Math.max(1, frequency),
+                enabled
+            });
+            await loadReminders();
+            showToast('提醒设置已保存');
+        }
+
+        async function resetReminder(id) {
+            await ipcRenderer.invoke('reminder-reset', id);
+            await loadReminders();
+            showToast('计时已重置');
+        }
+
+        async function triggerNow(id) {
+            await ipcRenderer.invoke('reminder-trigger-now', id);
+            await loadReminders();
+            showToast('已发送提醒');
+        }
+
+        async function deleteReminder(id) {
+            const reminder = reminders.find(r => r.id === id);
+            if (!reminder) return;
+            
+            if (!confirm(`确定要删除提醒"${reminder.title}"吗？`)) return;
+            
+            await ipcRenderer.invoke('reminder-delete', id);
+            await loadReminders();
+            showToast('提醒已删除');
+        }
+
+        function openNewModal() {
+            document.getElementById('new-title').value = '';
+            document.getElementById('new-message').value = '';
+            document.getElementById('new-frequency').value = 60;
+            document.getElementById('new-modal').classList.add('visible');
+        }
+
+        function closeNewModal() {
+            document.getElementById('new-modal').classList.remove('visible');
+        }
+
+        async function createReminder() {
+            const title = document.getElementById('new-title').value.trim();
+            const message = document.getElementById('new-message').value.trim();
+            const frequency = Number(document.getElementById('new-frequency').value) || 60;
+
+            if (!title) {
+                showToast('请输入标题');
+                return;
+            }
+
+            await ipcRenderer.invoke('reminder-create', {
+                title,
+                message: message || title,
+                frequencyMinutes: Math.max(1, frequency),
+                enabled: true
+            });
+
+            closeNewModal();
+            await loadReminders();
+            showToast('提醒已创建');
+        }
+
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.classList.add('visible');
+            setTimeout(() => toast.classList.remove('visible'), 1800);
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text || '';
+            return div.innerHTML;
+        }
+
+        function formatDate(value) {
+            if (!value) return '未安排';
+            return new Date(value).toLocaleString('zh-CN');
+        }
+
+        document.getElementById('new-modal').addEventListener('click', (e) => {
+            if (e.target.id === 'new-modal') {
+                closeNewModal();
+            }
+        });
+
+        loadReminders();
+    </script>
+</body>
+</html>
