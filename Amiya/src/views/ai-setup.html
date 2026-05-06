@@ -1,0 +1,1315 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Amiya - 初始设置</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: #fff;
+        }
+
+        .setup-container {
+            width: 600px;
+            max-width: 90vw;
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 40px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            font-size: 28px;
+            margin-bottom: 10px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .header p {
+            color: rgba(255, 255, 255, 0.6);
+            font-size: 14px;
+        }
+
+        .step {
+            display: none;
+        }
+
+        .step.active {
+            display: block;
+            animation: fadeIn 0.3s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .step-title {
+            font-size: 18px;
+            margin-bottom: 20px;
+            color: rgba(255, 255, 255, 0.9);
+        }
+
+        .detecting {
+            text-align: center;
+            padding: 40px;
+        }
+
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 3px solid rgba(255, 255, 255, 0.1);
+            border-top-color: #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .service-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        .service-item {
+            display: flex;
+            align-items: center;
+            padding: 16px 20px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .service-item:hover {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: rgba(102, 126, 234, 0.5);
+        }
+
+        .service-item.selected {
+            background: rgba(102, 126, 234, 0.2);
+            border-color: #667eea;
+        }
+
+        .service-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 10px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 16px;
+            font-size: 20px;
+        }
+
+        .service-info {
+            flex: 1;
+        }
+
+        .service-name {
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+
+        .service-desc {
+            font-size: 12px;
+            color: rgba(255, 255, 255, 0.5);
+        }
+
+        .service-status {
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+
+        .service-status.running {
+            background: rgba(100, 200, 100, 0.2);
+            color: #64c864;
+        }
+
+        .service-status.not-installed {
+            background: rgba(255, 100, 100, 0.2);
+            color: #ff6464;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 10px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-primary:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.1);
+            color: rgba(255, 255, 255, 0.8);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.15);
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 12px;
+            justify-content: flex-end;
+            margin-top: 20px;
+        }
+
+        .model-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-bottom: 20px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .model-item {
+            display: flex;
+            align-items: center;
+            padding: 14px 16px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .model-item:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .model-item.selected {
+            background: rgba(102, 126, 234, 0.2);
+            border-color: #667eea;
+        }
+
+        .model-name {
+            font-weight: 600;
+            margin-bottom: 2px;
+        }
+
+        .model-desc {
+            font-size: 12px;
+            color: rgba(255, 255, 255, 0.5);
+        }
+
+        .model-size {
+            margin-left: auto;
+            padding: 4px 10px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            font-size: 12px;
+            color: rgba(255, 255, 255, 0.7);
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+            overflow: hidden;
+            margin: 20px 0;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 4px;
+            transition: width 0.3s ease;
+        }
+
+        .progress-text {
+            text-align: center;
+            font-size: 14px;
+            color: rgba(255, 255, 255, 0.7);
+        }
+
+        .success-icon {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #64c864 0%, #4aa84a 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 20px;
+            font-size: 40px;
+            animation: scaleIn 0.5s ease;
+        }
+
+        @keyframes scaleIn {
+            from { transform: scale(0); }
+            to { transform: scale(1); }
+        }
+
+        .success-message {
+            text-align: center;
+        }
+
+        .success-message h2 {
+            font-size: 24px;
+            margin-bottom: 10px;
+            color: #64c864;
+        }
+
+        .success-message p {
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 14px;
+        }
+
+        .config-form {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .form-label {
+            font-size: 14px;
+            color: rgba(255, 255, 255, 0.8);
+        }
+
+        .form-input {
+            padding: 12px 16px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 10px;
+            color: white;
+            font-size: 14px;
+            outline: none;
+            transition: all 0.3s;
+        }
+
+        .form-input:focus {
+            border-color: #667eea;
+            background: rgba(255, 255, 255, 0.08);
+        }
+
+        .form-input::placeholder {
+            color: rgba(255, 255, 255, 0.3);
+        }
+
+        .no-service {
+            text-align: center;
+            padding: 40px 20px;
+            color: rgba(255, 255, 255, 0.6);
+        }
+
+        .no-service-icon {
+            font-size: 48px;
+            margin-bottom: 16px;
+            opacity: 0.5;
+        }
+
+        .radio-indicator {
+            width: 20px;
+            height: 20px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            margin-right: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s;
+        }
+
+        .selected .radio-indicator {
+            border-color: #667eea;
+            background: #667eea;
+        }
+
+        .radio-indicator::after {
+            content: '';
+            width: 8px;
+            height: 8px;
+            background: white;
+            border-radius: 50%;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        .selected .radio-indicator::after {
+            opacity: 1;
+        }
+
+        /* Custom checkbox style from Uiverse.io by PriyanshuGupta28 */
+        .custom-checkbox-wrapper {
+            display: flex;
+            align-items: center;
+            cursor: pointer;
+            flex: 1;
+        }
+
+        .custom-checkbox-wrapper input[type="checkbox"] {
+            display: none;
+        }
+
+        .custom-checkbox {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 4px;
+            position: relative;
+            cursor: pointer;
+            margin-right: 12px;
+            flex-shrink: 0;
+            transition: all 0.3s;
+        }
+
+        .custom-checkbox::after {
+            content: "";
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 10px;
+            height: 10px;
+            background-color: #667eea;
+            border-radius: 2px;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        .custom-checkbox-wrapper input[type="checkbox"]:checked + .custom-checkbox {
+            border-color: #667eea;
+        }
+
+        .custom-checkbox-wrapper input[type="checkbox"]:checked + .custom-checkbox::after {
+            opacity: 1;
+        }
+
+        .model-item {
+            display: flex;
+            align-items: center;
+            padding: 14px 16px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .model-item:hover {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: rgba(102, 126, 234, 0.5);
+        }
+
+        .model-item.selected {
+            background: rgba(102, 126, 234, 0.2);
+            border-color: #667eea;
+        }
+
+        /* Install option cards */
+        .install-options {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 16px;
+        }
+
+        .option-card {
+            background: rgba(255, 255, 255, 0.05);
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            border-radius: 16px;
+            padding: 24px 16px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            position: relative;
+        }
+
+        .option-card:hover {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: rgba(102, 126, 234, 0.5);
+            transform: translateY(-4px);
+        }
+
+        .option-card.recommended {
+            border-color: #667eea;
+            background: rgba(102, 126, 234, 0.1);
+        }
+
+        .option-card.selected {
+            border-color: #667eea;
+            background: rgba(102, 126, 234, 0.2);
+        }
+
+        .option-badge {
+            position: absolute;
+            top: -10px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .option-icon {
+            font-size: 40px;
+            margin-bottom: 12px;
+        }
+
+        .option-title {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+
+        .option-desc {
+            font-size: 12px;
+            color: rgba(255, 255, 255, 0.5);
+            margin-bottom: 8px;
+        }
+
+        .option-size {
+            display: inline-block;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            color: rgba(255, 255, 255, 0.8);
+            margin-bottom: 12px;
+        }
+
+        .option-features {
+            list-style: none;
+            text-align: left;
+            font-size: 12px;
+            color: rgba(255, 255, 255, 0.6);
+            padding: 0 8px;
+        }
+
+        .option-features li {
+            margin-bottom: 4px;
+            padding-left: 16px;
+            position: relative;
+        }
+
+        .option-features li::before {
+            content: '✓';
+            position: absolute;
+            left: 0;
+            color: #64c864;
+        }
+
+        @media (max-width: 600px) {
+            .install-options {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="setup-container">
+        <div class="header">
+            <h1>🐰 Amiya 初始设置</h1>
+            <p>配置 AI 助手，让阿米娅为您服务</p>
+        </div>
+
+        <!-- Step 1: Detecting -->
+        <div class="step active" id="step-detecting">
+            <div class="detecting">
+                <div class="spinner"></div>
+                <p>正在检测本地 AI 服务...</p>
+            </div>
+        </div>
+
+        <!-- Step 2: Select Service -->
+        <div class="step" id="step-select-service">
+            <h2 class="step-title">选择 AI 服务</h2>
+            <div class="service-list" id="service-list">
+                <!-- Services will be populated here -->
+            </div>
+            <div class="no-service" id="no-service" style="display: none;">
+                <div class="no-service-icon">🔍</div>
+                <p>未检测到本地 AI 服务</p>
+                <p style="font-size: 12px; margin-top: 8px;">阿米娅需要 AI 模型才能与博士对话</p>
+            </div>
+            <div class="btn-group">
+                <button class="btn btn-secondary" onclick="showManualConfig()">手动配置</button>
+                <button class="btn btn-primary" id="btn-install-ollama" onclick="showInstallOptions()">安装 Ollama</button>
+            </div>
+        </div>
+
+        <!-- Step 2.5: Install Options -->
+        <div class="step" id="step-install-options">
+            <h2 class="step-title">选择适合您的模型</h2>
+            <div class="install-options" style="margin-bottom: 20px;">
+                <div class="option-card" onclick="selectInstallOption('small')">
+                    <div class="option-icon">🪶</div>
+                    <div class="option-title">轻量版</div>
+                    <div class="option-desc">适合低配电脑</div>
+                    <div class="option-size">400MB - 1GB</div>
+                    <ul class="option-features">
+                        <li>基础对话能力</li>
+                        <li>响应速度快</li>
+                        <li>内存占用低</li>
+                    </ul>
+                </div>
+                <div class="option-card recommended" onclick="selectInstallOption('medium')">
+                    <div class="option-badge">推荐</div>
+                    <div class="option-icon">⚖️</div>
+                    <div class="option-title">标准版</div>
+                    <div class="option-desc">适合大多数用户</div>
+                    <div class="option-size">2GB - 5GB</div>
+                    <ul class="option-features">
+                        <li>优秀的对话质量</li>
+                        <li>中文表现良好</li>
+                        <li>性能与资源平衡</li>
+                    </ul>
+                </div>
+                <div class="option-card" onclick="selectInstallOption('large')">
+                    <div class="option-icon">🚀</div>
+                    <div class="option-title">高性能版</div>
+                    <div class="option-desc">需要较好显卡</div>
+                    <div class="option-size">9GB - 20GB</div>
+                    <ul class="option-features">
+                        <li>卓越的推理能力</li>
+                        <li>复杂的对话理解</li>
+                        <li>需要高端配置</li>
+                    </ul>
+                </div>
+            </div>
+            <div class="btn-group">
+                <button class="btn btn-secondary" onclick="goBack()">返回</button>
+            </div>
+        </div>
+
+        <!-- Step 2.6: Select Specific Model -->
+        <div class="step" id="step-select-specific-model">
+            <h2 class="step-title">选择具体模型</h2>
+            <div class="model-list" id="specific-model-list">
+                <!-- Models will be populated here -->
+            </div>
+            <div class="btn-group">
+                <button class="btn btn-secondary" onclick="goBack()">返回</button>
+                <button class="btn btn-primary" id="btn-confirm-specific-model" onclick="confirmSpecificModel()" disabled>下载并安装</button>
+            </div>
+        </div>
+
+        <!-- Step 3: Select Model -->
+        <div class="step" id="step-select-model">
+            <h2 class="step-title">选择模型</h2>
+            <div class="model-list" id="model-list">
+                <!-- Models will be populated here -->
+            </div>
+            <div class="btn-group">
+                <button class="btn btn-secondary" onclick="goBack()">返回</button>
+                <button class="btn btn-primary" id="btn-confirm-model" onclick="confirmModel()" disabled>确认</button>
+            </div>
+        </div>
+
+        <!-- Step 4: Downloading -->
+        <div class="step" id="step-downloading">
+            <h2 class="step-title">正在下载模型</h2>
+            <div class="progress-bar">
+                <div class="progress-fill" id="download-progress" style="width: 0%"></div>
+            </div>
+            <p class="progress-text" id="download-text">准备下载...</p>
+        </div>
+
+        <!-- Step 5: Testing -->
+        <div class="step" id="step-testing">
+            <div class="detecting">
+                <div class="spinner"></div>
+                <p>正在测试连接...</p>
+            </div>
+        </div>
+
+        <!-- Step 6: Success -->
+        <div class="step" id="step-success">
+            <div class="success-message">
+                <div class="success-icon">✓</div>
+                <h2>干员阿米娅已接管系统</h2>
+                <p>AI 配置完成，欢迎回家，博士。</p>
+            </div>
+            <div class="btn-group" style="justify-content: center; margin-top: 30px;">
+                <button class="btn btn-primary" onclick="finishSetup()">开始使用</button>
+            </div>
+        </div>
+
+        <!-- Step 7: Manual Config -->
+        <div class="step" id="step-manual-config">
+            <h2 class="step-title">手动配置</h2>
+            <div class="config-form">
+                <div class="form-group">
+                    <label class="form-label">服务类型</label>
+                    <select class="form-input" id="manual-provider">
+                        <option value="ollama">Ollama</option>
+                        <option value="lmstudio">LM Studio</option>
+                        <option value="openai">OpenAI API</option>
+                        <option value="custom">自定义 API</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">API 地址</label>
+                    <input type="text" class="form-input" id="manual-endpoint" placeholder="http://127.0.0.1:11434">
+                </div>
+                <div class="form-group" id="api-key-group" style="display: none;">
+                    <label class="form-label">API Key</label>
+                    <input type="password" class="form-input" id="manual-apikey" placeholder="输入 API Key">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">模型名称</label>
+                    <input type="text" class="form-input" id="manual-model" placeholder="qwen2.5:7b">
+                </div>
+            </div>
+            <div class="btn-group">
+                <button class="btn btn-secondary" onclick="goBack()">返回</button>
+                <button class="btn btn-primary" onclick="testManualConfig()">测试连接</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const { ipcRenderer } = require('electron');
+
+        let detectedServices = [];
+        let selectedService = null;
+        let selectedModel = null;
+        let providers = {};
+
+        // Initialize
+        async function init() {
+            providers = await ipcRenderer.invoke('ai-get-providers');
+            detectServices();
+        }
+
+        // Step 1: Detect services
+        async function detectServices() {
+            showStep('step-detecting');
+
+            const isOllamaInstalled = await ipcRenderer.invoke('ai-is-ollama-installed');
+            if (!isOllamaInstalled) {
+                showNoService();
+                return;
+            }
+
+            detectedServices = await ipcRenderer.invoke('ai-detect-services');
+            let ollamaService = detectedServices.find(s => s.provider === 'ollama');
+
+            if (!ollamaService) {
+                const localModels = await ipcRenderer.invoke('ai-list-ollama-models');
+                ollamaService = {
+                    provider: 'ollama',
+                    name: 'Ollama',
+                    endpoint: 'http://127.0.0.1:11434',
+                    models: localModels.models || [],
+                    status: localModels.success ? 'installed' : 'not-running'
+                };
+                detectedServices.unshift(ollamaService);
+            }
+
+            selectedService = ollamaService;
+            if ((ollamaService.models || []).length > 0) {
+                const useLocal = confirm(`检测到 ${ollamaService.models.length} 个本地 Ollama 模型。\n\n是否直接使用本地模型？\n选择“取消”将进入 Qwen 系列模型推荐下载。`);
+                if (useLocal) {
+                    showModelSelection();
+                } else {
+                    showInstallOptions();
+                }
+            } else {
+                showInstallOptions();
+            }
+        }
+
+        // Step 2: Show service selection
+        function showServiceSelection() {
+            showStep('step-select-service');
+            const listEl = document.getElementById('service-list');
+            const noServiceEl = document.getElementById('no-service');
+            const installBtn = document.getElementById('btn-install-ollama');
+            
+            listEl.innerHTML = '';
+            noServiceEl.style.display = 'none';
+            installBtn.style.display = 'none';
+            installBtn.onclick = showInstallOptions;
+
+            // If only one service detected, auto-select it
+            if (detectedServices.length === 1) {
+                selectedService = detectedServices[0];
+                setTimeout(() => showModelSelection(), 300);
+                return;
+            }
+
+            detectedServices.forEach((service, index) => {
+                const item = document.createElement('div');
+                item.className = 'service-item';
+                item.onclick = () => selectService(index);
+                
+                const icon = service.provider === 'ollama' ? '🦙' : '🤖';
+                const modelCount = service.models.length;
+                
+                item.innerHTML = `
+                    <div class="radio-indicator"></div>
+                    <div class="service-icon">${icon}</div>
+                    <div class="service-info">
+                        <div class="service-name">${service.name}</div>
+                        <div class="service-desc">${service.endpoint} · ${modelCount} 个模型</div>
+                    </div>
+                    <div class="service-status running">运行中</div>
+                `;
+                
+                listEl.appendChild(item);
+            });
+
+            // Add option to install Ollama if not detected
+            const hasOllama = detectedServices.some(s => s.provider === 'ollama');
+            if (!hasOllama) {
+                installBtn.style.display = 'inline-flex';
+            }
+        }
+
+        // Show no service found
+        function showNoService() {
+            showStep('step-select-service');
+            document.getElementById('service-list').style.display = 'none';
+            document.getElementById('no-service').style.display = 'block';
+            const installBtn = document.getElementById('btn-install-ollama');
+            installBtn.style.display = 'inline-flex';
+            installBtn.onclick = installOllamaFromNoService;
+        }
+
+        async function installOllamaFromNoService() {
+            const result = await ipcRenderer.invoke('ai-download-ollama');
+            if (result.success) {
+                alert('已打开 Ollama 下载页面。安装完成并启动 Ollama 后，请重新进入 Chat。');
+                ipcRenderer.send('setup-complete');
+            } else {
+                alert('无法打开 Ollama 下载页面: ' + result.message);
+            }
+        }
+
+        // Show install options (small/medium/large)
+        let selectedInstallOption = null;
+        function showInstallOptions() {
+            showStep('step-install-options');
+            selectedInstallOption = null;
+            document.querySelectorAll('.option-card').forEach(card => {
+                card.classList.remove('selected');
+            });
+        }
+
+        // Select install option category
+        function selectInstallOption(category) {
+            selectedInstallOption = category;
+            document.querySelectorAll('.option-card').forEach(card => {
+                card.classList.remove('selected');
+            });
+            event.currentTarget.classList.add('selected');
+            
+            // Show specific model selection after a short delay
+            setTimeout(() => showSpecificModelSelection(category), 300);
+        }
+
+        // Show specific model selection for the chosen category
+        function showSpecificModelSelection(category) {
+            showStep('step-select-specific-model');
+            const listEl = document.getElementById('specific-model-list');
+            listEl.innerHTML = '';
+            
+            const categoryModels = providers.ollama.models.filter(m => m.category === category);
+            
+            categoryModels.forEach((model, index) => {
+                const item = document.createElement('label');
+                item.className = 'model-item';
+                item.htmlFor = `specific-model-${index}`;
+                
+                item.innerHTML = `
+                    <div class="custom-checkbox-wrapper">
+                        <input type="checkbox" id="specific-model-${index}" name="specific-model" value="${model.id}" onchange="handleSpecificModelSelect('${model.id}', this)">
+                        <span class="custom-checkbox"></span>
+                        <div style="flex: 1;">
+                            <div class="model-name">${model.name}</div>
+                            <div class="model-desc">${model.desc}</div>
+                        </div>
+                        <div class="model-size">${model.size}</div>
+                    </div>
+                `;
+                
+                listEl.appendChild(item);
+            });
+            
+            // Auto-select if only one model in category
+            if (categoryModels.length === 1) {
+                const modelId = categoryModels[0].id;
+                setTimeout(() => {
+                    const checkbox = document.querySelector(`input[value="${modelId}"]`);
+                    if (checkbox) {
+                        checkbox.checked = true;
+                        handleSpecificModelSelect(modelId, checkbox);
+                    }
+                }, 100);
+            }
+        }
+
+        // Handle specific model selection
+        let selectedSpecificModel = null;
+        function handleSpecificModelSelect(modelId, checkbox) {
+            document.querySelectorAll('input[name="specific-model"]').forEach(cb => {
+                if (cb !== checkbox) {
+                    cb.checked = false;
+                }
+            });
+            
+            document.querySelectorAll('#step-select-specific-model .model-item').forEach(el => {
+                el.classList.remove('selected');
+            });
+            
+            if (checkbox.checked) {
+                selectedSpecificModel = modelId;
+                checkbox.closest('.model-item').classList.add('selected');
+                document.getElementById('btn-confirm-specific-model').disabled = false;
+            } else {
+                selectedSpecificModel = null;
+                document.getElementById('btn-confirm-specific-model').disabled = true;
+            }
+        }
+
+        // Confirm specific model and start installation
+        async function confirmSpecificModel() {
+            if (!selectedSpecificModel) return;
+            
+            // First check if Ollama is installed
+            const isOllamaInstalled = await ipcRenderer.invoke('ai-is-ollama-installed');
+            
+            if (!isOllamaInstalled) {
+                // Need to install Ollama first
+                const result = await ipcRenderer.invoke('ai-download-ollama');
+                if (result.success) {
+                    alert('请先下载并安装 Ollama，安装完成后重新启动本应用。\n\n下载页面已打开，请完成安装后再次点击 Chat 按钮。');
+                    ipcRenderer.send('setup-complete');
+                }
+                return;
+            }
+            
+            // Ollama is installed, proceed to download model
+            await downloadModel(selectedSpecificModel);
+        }
+
+        // Select a service
+        function selectService(index) {
+            selectedService = detectedServices[index];
+            
+            // Update UI
+            document.querySelectorAll('.service-item').forEach((el, i) => {
+                el.classList.toggle('selected', i === index);
+            });
+
+            // Show model selection after a short delay
+            setTimeout(() => showModelSelection(), 300);
+        }
+
+        // Step 3: Show model selection
+        function showModelSelection() {
+            showStep('step-select-model');
+            const listEl = document.getElementById('model-list');
+            listEl.innerHTML = '';
+
+            if (selectedService.provider === 'ollama') {
+                const localModels = selectedService.models || [];
+                if (localModels.length === 0) {
+                    showInstallOptions();
+                    return;
+                }
+
+                localModels.forEach((model, index) => {
+                    const item = document.createElement('label');
+                    const modelId = model.name || model.id || model.model;
+                    item.className = 'model-item';
+                    item.htmlFor = `model-${index}`;
+                    item.innerHTML = `
+                        <div class="custom-checkbox-wrapper">
+                            <input type="checkbox" id="model-${index}" name="model" value="${modelId}" onchange="handleModelSelect('${modelId}', this)">
+                            <span class="custom-checkbox"></span>
+                            <div style="flex: 1;">
+                                <div class="model-name">${modelId}</div>
+                                <div class="model-desc">本地已安装模型</div>
+                            </div>
+                            <div class="model-size">${model.size || ''}</div>
+                        </div>
+                    `;
+                    listEl.appendChild(item);
+                });
+
+                if (localModels.length === 1) {
+                    const modelId = localModels[0].name || localModels[0].id || localModels[0].model;
+                    setTimeout(() => {
+                        const checkbox = document.querySelector(`input[value="${modelId}"]`);
+                        if (checkbox) {
+                            checkbox.checked = true;
+                            handleModelSelect(modelId, checkbox);
+                        }
+                    }, 100);
+                }
+                return;
+            }
+
+            if (selectedService.provider === 'ollama') {
+                // Show recommended models for Ollama
+                const ollamaModels = providers.ollama.models;
+                
+                ollamaModels.forEach((model, index) => {
+                    const item = document.createElement('label');
+                    item.className = 'model-item';
+                    item.htmlFor = `model-${index}`;
+                    
+                    const isInstalled = selectedService.models.some(m => m.name === model.id);
+                    
+                    item.innerHTML = `
+                        <div class="custom-checkbox-wrapper">
+                            <input type="checkbox" id="model-${index}" name="model" value="${model.id}" onchange="handleModelSelect('${model.id}', this)">
+                            <span class="custom-checkbox"></span>
+                            <div style="flex: 1;">
+                                <div class="model-name">${model.name} ${isInstalled ? '✓' : ''}</div>
+                                <div class="model-desc">${model.desc}</div>
+                            </div>
+                            <div class="model-size">${model.size}</div>
+                        </div>
+                    `;
+                    
+                    listEl.appendChild(item);
+                });
+
+                // Auto-select if only one model is installed
+                const installedModels = ollamaModels.filter(m => 
+                    selectedService.models.some(sm => sm.name === m.id)
+                );
+                if (installedModels.length === 1) {
+                    const modelId = installedModels[0].id;
+                    setTimeout(() => {
+                        const checkbox = document.querySelector(`input[value="${modelId}"]`);
+                        if (checkbox) {
+                            checkbox.checked = true;
+                            handleModelSelect(modelId, checkbox);
+                        }
+                    }, 100);
+                }
+            } else {
+                // For other services, show detected models
+                const models = selectedService.models || [];
+                
+                if (models.length === 0) {
+                    // No models detected
+                    listEl.innerHTML = `
+                        <div style="text-align: center; padding: 40px; color: rgba(255,255,255,0.6);">
+                            <div style="font-size: 32px; margin-bottom: 16px;">📭</div>
+                            <p>未检测到可用模型</p>
+                            <p style="font-size: 12px; margin-top: 8px;">请在服务中加载模型后重试</p>
+                        </div>
+                    `;
+                    document.getElementById('btn-confirm-model').disabled = true;
+                    return;
+                }
+                
+                models.forEach((model, index) => {
+                    const item = document.createElement('label');
+                    item.className = 'model-item';
+                    item.htmlFor = `model-${index}`;
+                    
+                    item.innerHTML = `
+                        <div class="custom-checkbox-wrapper">
+                            <input type="checkbox" id="model-${index}" name="model" value="${model.id || model.name}" onchange="handleModelSelect('${model.id || model.name}', this)">
+                            <span class="custom-checkbox"></span>
+                            <div style="flex: 1;">
+                                <div class="model-name">${model.name || model.id}</div>
+                            </div>
+                        </div>
+                    `;
+                    
+                    listEl.appendChild(item);
+                });
+
+                // Auto-select if only one model
+                if (models.length === 1) {
+                    const modelId = models[0].id || models[0].name;
+                    setTimeout(() => {
+                        const checkbox = document.querySelector(`input[value="${modelId}"]`);
+                        if (checkbox) {
+                            checkbox.checked = true;
+                            handleModelSelect(modelId, checkbox);
+                        }
+                    }, 100);
+                }
+            }
+        }
+
+        // Handle model selection with checkbox
+        function handleModelSelect(modelId, checkbox) {
+            // Uncheck all other checkboxes
+            document.querySelectorAll('input[name="model"]').forEach(cb => {
+                if (cb !== checkbox) {
+                    cb.checked = false;
+                }
+            });
+            
+            // Update selected state on parent elements
+            document.querySelectorAll('.model-item').forEach(el => {
+                el.classList.remove('selected');
+            });
+            
+            if (checkbox.checked) {
+                selectedModel = modelId;
+                checkbox.closest('.model-item').classList.add('selected');
+                document.getElementById('btn-confirm-model').disabled = false;
+            } else {
+                selectedModel = null;
+                document.getElementById('btn-confirm-model').disabled = true;
+            }
+        }
+
+        // Confirm model selection
+        async function confirmModel() {
+            const isInstalled = selectedService.models.some(m => (m.name || m.id || m.model) === selectedModel);
+            
+            if (!isInstalled && selectedService.provider === 'ollama') {
+                // Need to download model
+                await downloadModel(selectedModel);
+            } else {
+                // Model already available
+                await saveConfigAndTest();
+            }
+        }
+
+        // Download model
+        async function downloadModel(modelName) {
+            selectedModel = modelName;
+            showStep('step-downloading');
+            
+            const progressEl = document.getElementById('download-progress');
+            const textEl = document.getElementById('download-text');
+            
+            textEl.textContent = `正在下载 ${modelName}...`;
+            progressEl.style.width = '0%';
+            
+            const onProgress = (event, progress) => {
+                if (!progress || progress.modelName !== modelName) return;
+
+                if (typeof progress.percent === 'number') {
+                    const percent = Math.max(0, Math.min(100, progress.percent));
+                    progressEl.style.width = `${percent}%`;
+                }
+
+                if (progress.status) {
+                    textEl.textContent = progress.status;
+                }
+            };
+
+            ipcRenderer.on('ai-pull-model-progress', onProgress);
+            const result = await ipcRenderer.invoke('ai-pull-model', modelName);
+            ipcRenderer.removeListener('ai-pull-model-progress', onProgress);
+            
+            if (result.success) {
+                progressEl.style.width = '100%';
+                textEl.textContent = '下载完成。';
+                textEl.textContent = '下载完成！';
+                textEl.textContent = '下载完成。';
+                setTimeout(() => saveConfigAndTest(), 500);
+            } else {
+                alert('下载失败: ' + result.message);
+                showModelSelection();
+            }
+        }
+
+        // Save config and test connection
+        async function saveConfigAndTest() {
+            showStep('step-testing');
+            
+            const config = {
+                provider: selectedService ? selectedService.provider : 'ollama',
+                endpoint: selectedService ? selectedService.endpoint : 'http://127.0.0.1:11434',
+                model: selectedModel || selectedSpecificModel,
+                isConfigured: true,
+                isFirstRun: false,
+                isFirstConnect: true // Will show "takeover" message on first chat
+            };
+            
+            // Save config
+            await ipcRenderer.invoke('ai-update-config', config);
+            
+            // Test connection
+            const testResult = await ipcRenderer.invoke('ai-test-connection', config);
+            
+            if (testResult.success) {
+                showStep('step-success');
+            } else {
+                alert('连接测试失败: ' + testResult.message);
+                if (selectedService) {
+                    showStep('step-select-model');
+                } else {
+                    showStep('step-select-specific-model');
+                }
+            }
+        }
+
+        // Install Ollama
+        async function installOllama() {
+            const isInstalled = await ipcRenderer.invoke('ai-is-ollama-installed');
+            
+            if (isInstalled) {
+                alert('Ollama 已安装，请启动服务后重新检测');
+                detectServices();
+                return;
+            }
+            
+            const result = await ipcRenderer.invoke('ai-download-ollama');
+            if (result.success) {
+                alert('已打开 Ollama 下载页面，请下载安装后重新启动本应用');
+            }
+        }
+
+        // Show manual config
+        function showManualConfig() {
+            showStep('step-manual-config');
+            
+            // Set default values
+            document.getElementById('manual-endpoint').value = 'http://127.0.0.1:11434';
+            document.getElementById('manual-model').value = '';
+        }
+
+        // Test manual config
+        async function testManualConfig() {
+            const provider = document.getElementById('manual-provider').value;
+            const endpoint = document.getElementById('manual-endpoint').value;
+            const apiKey = document.getElementById('manual-apikey').value;
+            const model = document.getElementById('manual-model').value;
+            
+            if (!endpoint || !model) {
+                alert('请填写完整的配置信息');
+                return;
+            }
+            
+            showStep('step-testing');
+            
+            const config = {
+                provider,
+                endpoint,
+                model,
+                apiKey,
+                isConfigured: true,
+                isFirstRun: false,
+                isFirstConnect: true // Will show "takeover" message on first chat
+            };
+            
+            const testResult = await ipcRenderer.invoke('ai-test-connection', config);
+            
+            if (testResult.success) {
+                await ipcRenderer.invoke('ai-update-config', config);
+                showStep('step-success');
+            } else {
+                alert('连接测试失败: ' + testResult.message);
+                showStep('step-manual-config');
+            }
+        }
+
+        // Go back
+        function goBack() {
+            if (document.getElementById('step-select-model').classList.contains('active')) {
+                showServiceSelection();
+            } else if (document.getElementById('step-select-specific-model').classList.contains('active')) {
+                showInstallOptions();
+            } else if (document.getElementById('step-install-options').classList.contains('active')) {
+                showNoService();
+            } else if (document.getElementById('step-manual-config').classList.contains('active')) {
+                if (detectedServices.length > 0) {
+                    showServiceSelection();
+                } else {
+                    showNoService();
+                }
+            }
+        }
+
+        // Show step
+        function showStep(stepId) {
+            document.querySelectorAll('.step').forEach(el => {
+                el.classList.remove('active');
+            });
+            document.getElementById(stepId).classList.add('active');
+        }
+
+        // Finish setup
+        function finishSetup() {
+            ipcRenderer.send('setup-complete');
+        }
+
+        // Handle provider change in manual config
+        document.getElementById('manual-provider').addEventListener('change', (e) => {
+            const provider = e.target.value;
+            const apiKeyGroup = document.getElementById('api-key-group');
+            const endpointInput = document.getElementById('manual-endpoint');
+            const modelInput = document.getElementById('manual-model');
+            
+            if (providers[provider]) {
+                endpointInput.value = providers[provider].defaultEndpoint;
+                modelInput.value = providers[provider].defaultModel;
+                apiKeyGroup.style.display = providers[provider].requiresApiKey ? 'flex' : 'none';
+            }
+        });
+
+        // Start
+        init();
+    </script>
+</body>
+</html>
