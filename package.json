@@ -3,15 +3,71 @@
   "version": "0.1.0-beta.1",
   "description": "明日方舟主题桌面宠物 - AI对话、待办清单、备忘录、提醒",
   "main": "scripts/main.js",
+  "author": "Anthony_Li",
+  "license": "MIT",
   "scripts": {
     "start": "electron .",
     "dev": "electron . --dev",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "build": "electron-builder",
+    "build:win": "electron-builder --win",
+    "build:mac": "electron-builder --mac",
+    "build:linux": "electron-builder --linux",
+    "dist": "electron-builder --publish=never"
   },
-  "author": "Anthony_Li",
-  "license": "MIT",
+  "build": {
+    "appId": "com.ark.agents",
+    "productName": "Ark Agents",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "scripts/**/*",
+      "Amiya/**/*",
+      "Texas/**/*",
+      "Kaltsit/**/*",
+      "Texas2/**/*",
+      "Models/**/*",
+      "package.json"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": ["x64"]
+        },
+        {
+          "target": "portable",
+          "arch": ["x64"]
+        }
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Ark Agents"
+    },
+    "mac": {
+      "target": [
+        {
+          "target": "dmg",
+          "arch": ["x64", "arm64"]
+        }
+      ],
+      "category": "public.app-category.entertainment"
+    },
+    "linux": {
+      "target": [
+        "AppImage",
+        "deb"
+      ],
+      "category": "Utility"
+    }
+  },
   "devDependencies": {
-    "electron": "^28.3.3"
+    "electron": "^28.3.3",
+    "electron-builder": "^24.13.3"
   },
   "dependencies": {
     "@electron/remote": "^2.1.2",
