@@ -32,6 +32,79 @@ function getStyles() {
 .messageBox:focus-within {
   border: 1px solid rgb(110, 110, 110);
 }
+
+/* From Uiverse.io by cbolson */
+.my-form {
+  --_clr-primary: #666;
+  --_clr-hover: #f33195;
+  --_clr-checked: #127acf;
+}
+.my-form > div {
+  --_clr-current: var(--_clr-primary);
+
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.my-form > div + div {
+  margin-block-start: 0.5rem;
+}
+.my-form label {
+  cursor: pointer;
+  color: var(--_clr-current);
+  transition: color 150ms ease-in-out;
+}
+/* styled radio */
+.my-form input[type="radio"] {
+  appearance: none;
+  outline: none;
+  width: 1.5rem;
+  height: 1.5rem;
+  aspect-ratio: 1;
+  padding: 0.25rem;
+  background: transparent;
+  border: 1px solid var(--_clr-current);
+  border-radius: 50%;
+  display: grid;
+  place-content: center;
+  cursor: pointer;
+  position: relative;
+}
+.my-form input[type="radio"]::after {
+  content: "";
+  position: absolute;
+  inset: 0.25rem;
+  opacity: 0;
+  scale: 0;
+  transition:
+    opacity 150ms ease-in-out,
+    scale 150ms ease-in-out;
+  background-color: var(--_clr-checked);
+  border-radius: inherit;
+}
+
+.my-form label:hover,
+.my-form input[type="radio"]:focus-visible,
+.my-form input[type="radio"]:focus-visible + label,
+.my-form input[type="radio"]:hover,
+.my-form input[type="radio"]:hover + label {
+  --_clr-current: var(--_clr-hover);
+}
+.my-form input[type="radio"]:focus-visible::after,
+.my-form input[type="radio"]:hover::after {
+  opacity: 0.5;
+  scale: 1;
+  background-color: var(--_clr-hover);
+}
+
+.my-form input[type="radio"]:checked + label:not(:hover),
+.my-form input[type="radio"]:checked:not(:hover) {
+  --_clr-current: var(--_clr-checked);
+}
+.my-form input[type="radio"]:checked::after {
+  opacity: 1;
+  scale: 1;
+}
 #messageInput {
   width: 200px;
   height: 100%;

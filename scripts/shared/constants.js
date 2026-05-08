@@ -13,8 +13,7 @@ const CHAT_BUBBLE_DURATION_MS = 8000;
 const MODEL_NAMES = {
     amiya: 'build_char_002_amiya',
     texas: 'build_char_102_texas',
-    kalts: 'build_char_003_kalts',
-    texas2: 'build_char_1028_texas2'
+    kalts: 'build_char_003_kalts'
 };
 
 // Legacy exports for backward compatibility
@@ -82,19 +81,6 @@ const CHARACTER_CONFIGS = {
         name: "Kal'tsit",
         modelFolder: '003_kalts',
         modelName: MODEL_NAMES.kalts,
-        width: MODEL_WIDTH,
-        animations: {
-            day: TEXAS_DAY_ANIMATIONS,
-            sleep: TEXAS_SLEEP_ANIMATIONS
-        },
-        moveAnimation: 'Move',
-        interactAnimation: 'Interact'
-    },
-    texas2: {
-        id: 'texas2',
-        name: 'Texas the Omertosa',
-        modelFolder: '1028_texas2',
-        modelName: MODEL_NAMES.texas2,
         width: MODEL_WIDTH,
         animations: {
             day: TEXAS_DAY_ANIMATIONS,

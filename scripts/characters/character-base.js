@@ -12,6 +12,7 @@ const { Spine, TextureAtlas, AtlasAttachmentLoader, SkeletonBinary } = require('
 const characterBaseDir = __dirname;
 
 const { MOVING_SPEED, MODEL_WIDTH } = require(path.join(characterBaseDir, '..', 'shared', 'constants'));
+const { normalizeAnimationKey, matchAnimationName } = require(path.join(__dirname, 'animation-utils'));
 
 class CharacterBase {
     constructor(config, options = {}) {
@@ -37,19 +38,95 @@ class CharacterBase {
     }
 
     getModelPath() {
+        const folder = this.options.modelFolder || this.config.modelFolder;
+        const candidatePaths = [];
+
         if (this.options.modelsBasePath) {
-            return path.join(this.options.modelsBasePath, this.config.modelFolder);
+            candidatePaths.push(path.join(this.options.modelsBasePath, folder));
         }
-        // Fallback to characterBaseDir for Electron renderer compatibility
-        // characterBaseDir points to scripts/characters/, so we need to go up 2 levels to reach project root
-        return path.join(characterBaseDir, '..', '..', 'Models', this.config.modelFolder);
+
+        const projectModelsPath = path.join(characterBaseDir, '..', '..', 'Models', folder);
+        const projectModelsPathLower = path.join(characterBaseDir, '..', '..', 'models', folder);
+        candidatePaths.push(projectModelsPath, projectModelsPathLower);
+
+        if (process && process.resourcesPath) {
+            const resourcesPath = process.resourcesPath;
+            candidatePaths.push(
+                path.join(resourcesPath, 'app.asar', 'Models', folder),
+                path.join(resourcesPath, 'app.asar', 'models', folder),
+                path.join(resourcesPath, 'app.asar.unpacked', 'Models', folder),
+                path.join(resourcesPath, 'app.asar.unpacked', 'models', folder),
+                path.join(resourcesPath, 'Models', folder),
+                path.join(resourcesPath, 'models', folder),
+                path.join(resourcesPath, '..', 'resources', 'Models', folder),
+                path.join(resourcesPath, '..', 'resources', 'models', folder)
+            );
+        }
+
+        for (const candidate of candidatePaths) {
+            if (fs.existsSync(candidate)) {
+                console.log(`[CharacterBase] Resolved model folder: ${candidate}`);
+                return candidate;
+            }
+        }
+
+        console.warn(`[CharacterBase] No candidate model folder found. Returning default: ${projectModelsPath}`);
+        return projectModelsPath;
+    }
+
+    getAvailableAnimationNames() {
+        if (!this.spine) return [];
+
+        const skeletonData = this.spine.skeleton?.data || this.spine.skeletonData || this.spine.spineData;
+        const animations = skeletonData?.animations;
+        if (!animations) return [];
+
+        if (Array.isArray(animations)) {
+            return animations.map(anim => typeof anim === 'string' ? anim : anim.name).filter(Boolean);
+        }
+
+        return Object.keys(animations).filter(Boolean);
+    }
+
+    getCanonicalAnimationKey(name) {
+        return normalizeAnimationKey(name);
+    }
+
+    resolveAnimationName(name) {
+        const canonicalName = this.getCanonicalAnimationKey(name);
+        if (!Array.isArray(this.availableAnimations) || this.availableAnimations.length === 0) {
+            return canonicalName;
+        }
+
+        if (this.animationNameCache.has(canonicalName)) {
+            return this.animationNameCache.get(canonicalName);
+        }
+
+        let animationName = matchAnimationName(canonicalName, this.availableAnimations);
+        if (!animationName && /^Move(?:Left|Right)$/i.test(canonicalName)) {
+            animationName = matchAnimationName('Move', this.availableAnimations);
+        }
+        if (!animationName) {
+            animationName = this.availableAnimations.find(anim => typeof anim === 'string' && anim.toLowerCase() === canonicalName.toLowerCase());
+        }
+        if (!animationName) {
+            animationName = canonicalName;
+        }
+
+        this.animationNameCache.set(canonicalName, animationName);
+        return animationName;
+    }
+
+    getModelName() {
+        return this.options.modelName || this.config.modelName;
     }
 
     async load() {
         const modelPath = this.getModelPath();
-        const skelPath = path.join(modelPath, `${this.config.modelName}.skel`);
-        const atlasPath = path.join(modelPath, `${this.config.modelName}.atlas`);
-        const pngPath = path.join(modelPath, `${this.config.modelName}.png`);
+        const modelName = this.getModelName();
+        const skelPath = path.join(modelPath, `${modelName}.skel`);
+        const atlasPath = path.join(modelPath, `${modelName}.atlas`);
+        const pngPath = path.join(modelPath, `${modelName}.png`);
 
         console.log(`[CharacterBase] Loading model: ${this.config.name}`);
         console.log(`[CharacterBase] Model path: ${modelPath}`);
@@ -89,6 +166,8 @@ class CharacterBase {
 
             console.log('[CharacterBase] Creating Spine instance...');
             this.spine = new Spine(skeletonDataParsed);
+            this.availableAnimations = this.getAvailableAnimationNames();
+            this.animationNameCache = new Map();
             this.spine.x = this.options.startX || this.screenWidth / 2;
             this.spine.y = this.options.startY || this.screenHeight - 80;
             this.spine.scale.set(1, 1);
@@ -147,13 +226,17 @@ class CharacterBase {
     playAnimation(name, loop = true) {
         if (!this.spine) return;
 
-        let animationName = name;
-        if (name === 'MoveLeft' || name === 'MoveRight') {
-            animationName = this.config.moveAnimation || 'Move';
+        const canonicalName = this.getCanonicalAnimationKey(name);
+        let animationName = this.resolveAnimationName(canonicalName);
+
+        if (!animationName || animationName === canonicalName) {
+            if (canonicalName === 'MoveLeft' || canonicalName === 'MoveRight' || canonicalName === 'Move') {
+                animationName = this.resolveAnimationName(this.config.moveAnimation || 'Move');
+            }
         }
 
         this.spine.state.setAnimation(0, animationName, loop);
-        this.currentAnimation = name;
+        this.currentAnimation = canonicalName;
     }
 
     setDirection(dir) {
@@ -197,7 +280,8 @@ class CharacterBase {
     }
 
     getNextAnimation(current) {
-        const transitions = this.getActiveAnimationMatrix()[current];
+        const canonicalCurrent = this.getCanonicalAnimationKey(current || this.getDefaultIdleAnimation());
+        const transitions = this.getActiveAnimationMatrix()[canonicalCurrent];
         if (!transitions) {
             return this.getDefaultIdleAnimation();
         }
@@ -307,12 +391,13 @@ class CharacterBase {
         }
 
         const interactAnim = this.config.interactAnimation || 'Interact';
+        const actualInteractAnim = this.resolveAnimationName(interactAnim);
         this.playAnimation(interactAnim, false);
 
         const self = this;
         this.spine.state.addListener({
             complete: (trackEntry) => {
-                if (trackEntry.animation.name === interactAnim) {
+                if (trackEntry.animation.name === actualInteractAnim) {
                     self.playAnimation('Relax', true);
                     self.isUserInteracting = false;
                     if (callback) callback();

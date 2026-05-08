@@ -1,7 +1,7 @@
 {
   "name": "ark-agents",
   "version": "0.1.0-beta.1",
-  "description": "明日方舟主题桌面宠物 - AI对话、待办清单、备忘录、提醒",
+  "description": "基于罗德岛干员的 Electron 模块化多智能体桌面应用",
   "main": "scripts/main.js",
   "author": "Anthony_Li",
   "license": "MIT",
@@ -25,9 +25,13 @@
       "Amiya/**/*",
       "Texas/**/*",
       "Kaltsit/**/*",
-      "Texas2/**/*",
+      "models/**/*",
       "Models/**/*",
       "package.json"
+    ],
+    "asarUnpack": [
+      "models/**/*",
+      "Models/**/*"
     ],
     "win": {
       "target": [

@@ -5,7 +5,7 @@
 
 let contextMenu = null;
 
-function create(items) {
+function create() {
     if (contextMenu) return contextMenu;
 
     contextMenu = document.createElement('div');
@@ -15,7 +15,7 @@ function create(items) {
         zIndex: '9999',
         display: 'none',
         flexDirection: 'column',
-        width: '200px',
+        width: '260px',
         backgroundColor: '#0d1117',
         justifyContent: 'center',
         borderRadius: '10px',
@@ -26,6 +26,47 @@ function create(items) {
         userSelect: 'none',
         boxShadow: '0 8px 24px rgba(0, 0, 0, 0.4)'
     });
+
+    contextMenu.addEventListener('mouseover', (e) => {
+        if (e.target.classList.contains('context-menu-item')) {
+            const menuItems = contextMenu.querySelectorAll('.context-menu-item');
+            menuItems.forEach(item => {
+                if (item !== e.target) {
+                    item.style.transition = '300ms';
+                    item.style.filter = 'blur(1.5px)';
+                    item.style.transform = 'scale(0.95, 0.95)';
+                }
+            });
+        }
+    });
+
+    contextMenu.addEventListener('mouseout', () => {
+        const menuItems = contextMenu.querySelectorAll('.context-menu-item');
+        menuItems.forEach(item => {
+            item.style.filter = 'none';
+            item.style.transform = 'scale(1, 1)';
+        });
+    });
+
+    document.body.appendChild(contextMenu);
+    return contextMenu;
+}
+
+function renderMenu(options = {}) {
+    const { items = [], onAction, customContent, contentBeforeItems = false } = options;
+
+    contextMenu.innerHTML = '';
+
+    if (customContent && contentBeforeItems) {
+        const contentWrapper = document.createElement('div');
+        contentWrapper.style.marginBottom = '10px';
+        if (typeof customContent === 'string') {
+            contentWrapper.innerHTML = customContent;
+        } else if (customContent instanceof HTMLElement) {
+            contentWrapper.appendChild(customContent);
+        }
+        contextMenu.appendChild(contentWrapper);
+    }
 
     items.forEach((item, index) => {
         const row = document.createElement('button');
@@ -65,53 +106,36 @@ function create(items) {
             row.style.marginLeft = '17px';
         });
         row.addEventListener('click', () => {
-            if (item.action) item.action(item.id);
+            if (onAction) onAction(item.id);
         });
         row.dataset.actionId = item.id;
         contextMenu.appendChild(row);
     });
 
-    contextMenu.addEventListener('mouseover', (e) => {
-        if (e.target.classList.contains('context-menu-item')) {
-            const menuItems = contextMenu.querySelectorAll('.context-menu-item');
-            menuItems.forEach(item => {
-                if (item !== e.target) {
-                    item.style.transition = '300ms';
-                    item.style.filter = 'blur(1.5px)';
-                    item.style.transform = 'scale(0.95, 0.95)';
-                }
-            });
+    if (customContent && !contentBeforeItems) {
+        const contentWrapper = document.createElement('div');
+        contentWrapper.style.marginTop = '10px';
+        if (typeof customContent === 'string') {
+            contentWrapper.innerHTML = customContent;
+        } else if (customContent instanceof HTMLElement) {
+            contentWrapper.appendChild(customContent);
         }
-    });
-
-    contextMenu.addEventListener('mouseout', (e) => {
-        const menuItems = contextMenu.querySelectorAll('.context-menu-item');
-        menuItems.forEach(item => {
-            item.style.filter = 'none';
-            item.style.transform = 'scale(1, 1)';
-        });
-    });
-
-    document.body.appendChild(contextMenu);
-    return contextMenu;
+        contextMenu.appendChild(contentWrapper);
+    }
 }
 
 function show(x, y, options = {}) {
-    const { screenWidth, screenHeight, items, onAction, bounds } = options;
+    const { screenWidth, screenHeight, bounds } = options;
 
-    if (!contextMenu && items) {
-        create(items.map(item => ({
-            ...item,
-            action: onAction
-        })));
-    }
+    create();
+    renderMenu(options);
 
     contextMenu.style.left = `${x}px`;
     contextMenu.style.top = `${Math.max(10, y)}px`;
     contextMenu.style.display = 'flex';
 
     const rect = contextMenu.getBoundingClientRect();
-    if (rect.right > screenWidth) {
+    if (rect.right > screenWidth && bounds) {
         contextMenu.style.left = `${Math.max(10, bounds.x - rect.width - 10)}px`;
     }
     if (rect.bottom > screenHeight) {

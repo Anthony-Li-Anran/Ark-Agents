@@ -40,13 +40,10 @@ Ark-Agents/
 │   └── src/renderer/
 ├── Kaltsit/                 # Kaltsit operator module
 │   └── src/renderer/
-├── Texas2/                  # Texas the Omertosa operator module
-│   └── src/renderer/
 ├── Models/                  # Spine model assets
 │   ├── 002_Amiya/
 │   ├── 003_kalts/
-│   ├── 102_Texas/
-│   └── 1028_texas2/
+│   └── 102_Texas/
 └── scripts/                 # Core application scripts
     ├── characters/          # Character base classes
     ├── renderer/           # Renderer modules
@@ -61,7 +58,6 @@ Ark-Agents/
 | `AmiyaCharacter` | Amiya/src/renderer/amiya-character.js | Amiya operator implementation |
 | `TexasCharacter` | Texas/src/renderer/texas-character.js | Texas operator implementation |
 | `KaltsitCharacter` | Kaltsit/src/renderer/kaltsit-character.js | Kaltsit operator implementation |
-| `Texas2Character` | Texas2/src/renderer/texas2-character.js | Texas the Omertosa operator implementation |
 
 ### 2.3 Renderer Modules
 
@@ -152,7 +148,6 @@ hideOperatorCharacter() → Remove from characters + selectedOperators
 - [x] **Amiya** — Default operator, full AI integration ready
 - [x] **Texas** — Classic Texas operator
 - [x] **Kaltsit** — Kal'tsit operator
-- [x] **Texas the Omertosa (Texas2)** — Alternate Texas operator
 
 #### Productivity Modules [Planned]
 - [ ] AI conversation integration (Ollama)
@@ -181,8 +176,7 @@ Located in `scripts/shared/constants.js`:
 CHARACTER_CONFIGS = {
     amiya: { id: 'amiya', name: 'Amiya', modelFolder: '002_Amiya', ... },
     texas: { id: 'texas', name: 'Texas', modelFolder: '102_Texas', ... },
-    kalts: { id: 'kalts', name: "Kal'tsit", modelFolder: '003_kalts', ... },
-    texas2: { id: 'texas2', name: 'Texas the Omertosa', modelFolder: '1028_texas2', ... }
+    kalts: { id: 'kalts', name: "Kal'tsit", modelFolder: '003_kalts', ... }
 }
 ```
 
@@ -193,7 +187,6 @@ CHARACTER_CONFIGS = {
 | Amiya | Relax, Relax_Idle, Sit, Move | Sleep |
 | Texas | Relax, Relax_Idle, Sit, Move | Relax, Relax_Idle, Sit |
 | Kaltsit | Relax, Relax_Idle, Sit, Move | Relax, Relax_Idle, Sit |
-| Texas2 | Relax, Relax_Idle, Sit, Move | Relax, Relax_Idle, Sit |
 
 ---
 

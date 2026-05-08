@@ -35,6 +35,7 @@ console.warn = function(...args) {
 };
 
 const { ipcRenderer } = require('electron');
+const fs = require('fs');
 const PIXI = require('pixi.js');
 
 // Use absolute paths for module requires
@@ -42,10 +43,11 @@ const {
     GREETING_BUBBLE_DURATION_MS,
     CHAT_BUBBLE_DURATION_MS,
     CONTEXT_MENU_ITEMS,
-    CHARACTER_CONFIGS
+    CHARACTER_CONFIGS,
+    MODEL_NAMES
 } = require(path.join(scriptDir, '..', 'shared', 'constants'));
 
-const { AmiyaCharacter, TexasCharacter, KaltsitCharacter, Texas2Character } = require(path.join(scriptDir, '..', 'characters'));
+const { AmiyaCharacter, TexasCharacter, KaltsitCharacter } = require(path.join(scriptDir, '..', 'characters'));
 const { DragHandler } = require(path.join(scriptDir, 'drag-handler'));
 const chatUI = require(path.join(scriptDir, 'chat-ui'));
 const contextMenu = require(path.join(scriptDir, 'context-menu'));
@@ -65,6 +67,74 @@ let chatVisible = false;
 let isUserInteracting = false;
 let pendingChatAfterSetup = false;
 let chatActivationInProgress = false;
+let contextMenuTargetId = null;
+let texasSkin = 'default';
+
+const TEXAS_SKIN_OPTIONS = [
+    {
+        id: 'default',
+        label: 'Default Skin',
+        modelFolder: '102_Texas',
+        modelName: MODEL_NAMES.texas
+    },
+    {
+        id: 'ep7',
+        label: 'Texas Epoque #7',
+        modelFolder: '102_Texas Epoque #7',
+        modelName: 'build_char_102_texas_epoque#7'
+    }
+];
+
+function resolveSkinModelPath(skin) {
+    const modelName = skin.modelName;
+    const folder = skin.modelFolder;
+    const candidates = [
+        path.join(modelsBasePath, folder),
+        path.join(modelsBasePath, folder.replace(/^Models/i, 'models'))
+    ];
+
+    if (process && process.resourcesPath) {
+        const resourcesPath = process.resourcesPath;
+        candidates.push(
+            path.join(resourcesPath, 'app.asar', folder),
+            path.join(resourcesPath, 'app.asar', 'Models', folder),
+            path.join(resourcesPath, 'app.asar', 'models', folder),
+            path.join(resourcesPath, 'app.asar.unpacked', folder),
+            path.join(resourcesPath, 'app.asar.unpacked', 'Models', folder),
+            path.join(resourcesPath, 'app.asar.unpacked', 'models', folder),
+            path.join(resourcesPath, 'Models', folder),
+            path.join(resourcesPath, 'models', folder),
+            path.join(resourcesPath, '..', 'resources', folder),
+            path.join(resourcesPath, '..', 'resources', 'Models', folder),
+            path.join(resourcesPath, '..', 'resources', 'models', folder)
+        );
+    }
+
+    for (const candidate of candidates) {
+        const skelPath = path.join(candidate, `${modelName}.skel`);
+        const atlasPath = path.join(candidate, `${modelName}.atlas`);
+        const pngPath = path.join(candidate, `${modelName}.png`);
+        if (fs.existsSync(skelPath) && fs.existsSync(atlasPath) && fs.existsSync(pngPath)) {
+            return candidate;
+        }
+    }
+    return null;
+}
+
+function isTexasSkinAvailable(skin) {
+    return Boolean(resolveSkinModelPath(skin));
+}
+
+function getDefaultTexasSkin() {
+    return TEXAS_SKIN_OPTIONS.find((skin) => isTexasSkinAvailable(skin)) || TEXAS_SKIN_OPTIONS[0];
+}
+
+function getAvailableTexasSkins() {
+    return TEXAS_SKIN_OPTIONS.map((skin) => ({
+        ...skin,
+        available: isTexasSkinAvailable(skin)
+    }));
+}
 
 let chatInputWrapper = null;
 let exitChatBtn = null;
@@ -203,9 +273,12 @@ function initDragHandler() {
     dragHandler.attach(canvasContainer);
 
     canvasContainer.addEventListener('contextmenu', (e) => {
-        if (amiya && amiya.isPointInside(e.clientX, e.clientY)) {
+        const { charId, character, bounds } = getCharacterAtPoint(e.clientX, e.clientY) || {};
+        if (character && bounds) {
             e.preventDefault();
-            showContextMenu(e.clientX, e.clientY);
+            contextMenuTargetId = charId;
+            hideContextMenu();
+            showContextMenu(e.clientX, e.clientY, charId, bounds);
         } else {
             hideContextMenu();
         }
@@ -237,27 +310,46 @@ function showStartupGreeting() {
     }, 700);
 }
 
-function showContextMenu(x, y) {
-    if (!amiya) return;
-    
-    amiya.stopMoving();
-    if (amiya.animationTimer) {
-        clearTimeout(amiya.animationTimer);
+function getCharacterAtPoint(x, y) {
+    const allCharacters = { ...characters };
+    for (const [charId, char] of Object.entries(allCharacters)) {
+        if (char && char.isPointInside && char.isPointInside(x, y)) {
+            return { charId, character: char, bounds: char.getBounds() };
+        }
+    }
+    return null;
+}
+
+function showContextMenu(x, y, charId, bounds) {
+    const targetChar = characters[charId];
+    if (!targetChar || !bounds) return;
+
+    targetChar.stopMoving();
+    if (targetChar.animationTimer) {
+        clearTimeout(targetChar.animationTimer);
     }
     isUserInteracting = true;
     contextMenuInteraction = true;
-    amiya.playAnimation(getDefaultIdleAnimation(), true);
+    const idleAnimation = typeof targetChar.getDefaultIdleAnimation === 'function'
+        ? targetChar.getDefaultIdleAnimation()
+        : getDefaultIdleAnimation();
+    targetChar.playAnimation(idleAnimation, true);
 
-    const bounds = amiya.getBounds();
     const menuX = bounds.x + bounds.width + 10;
     const menuY = bounds.y + bounds.height / 2 - 100;
+    const customContent = charId === 'texas' ? buildTexasSkinSwitcher() : null;
+    const menuItems = charId === 'texas'
+        ? [{ id: 'exit', label: 'Exit' }]
+        : CONTEXT_MENU_ITEMS;
 
     contextMenu.show(menuX, menuY, {
         screenWidth,
         screenHeight,
-        items: CONTEXT_MENU_ITEMS,
+        items: menuItems,
         onAction: onContextMenuAction,
-        bounds: bounds
+        bounds,
+        customContent,
+        contentBeforeItems: Boolean(customContent)
     });
     contextMenuVisible = true;
 }
@@ -269,7 +361,12 @@ function hideContextMenu() {
     if (contextMenuInteraction) {
         contextMenuInteraction = false;
         isUserInteracting = false;
-        amiya?.scheduleNextAnimation(chatVisible);
+        if (contextMenuTargetId && characters[contextMenuTargetId]) {
+            characters[contextMenuTargetId].scheduleNextAnimation(chatVisible);
+        } else {
+            amiya?.scheduleNextAnimation(chatVisible);
+        }
+        contextMenuTargetId = null;
     }
 }
 
@@ -302,13 +399,89 @@ async function onContextMenuAction(actionId) {
         showOperatorPanel();
         return;
     }
+    if (actionId === 'close-texas') {
+        hideOperatorCharacter('texas');
+        hideContextMenu();
+        return;
+    }
+}
+
+function buildTexasSkinSwitcher() {
+    const wrapper = document.createElement('div');
+    wrapper.className = 'my-form';
+
+    getAvailableTexasSkins().forEach((option) => {
+        const row = document.createElement('div');
+        const input = document.createElement('input');
+        input.type = 'radio';
+        input.name = 'texas-skin';
+        input.id = `texas-skin-${option.id}`;
+        input.value = option.id;
+        input.checked = texasSkin === option.id;
+        input.disabled = !option.available;
+        input.addEventListener('change', async () => {
+            if (input.checked) {
+                await setTexasSkin(option.id);
+            }
+        });
+
+        const label = document.createElement('label');
+        label.htmlFor = input.id;
+        label.textContent = option.available ? option.label : `${option.label} (Unavailable)`;
+
+        row.appendChild(input);
+        row.appendChild(label);
+        wrapper.appendChild(row);
+    });
+
+    return wrapper;
+}
+
+async function setTexasSkin(skinId) {
+    if (texasSkin === skinId) return;
+
+    const skin = TEXAS_SKIN_OPTIONS.find((item) => item.id === skinId);
+    if (!skin) return;
+
+    if (!isTexasSkinAvailable(skin)) {
+        console.error(`[Renderer] Texas skin not available: ${skin.modelFolder}`);
+        const fallback = getDefaultTexasSkin();
+        if (fallback.id !== texasSkin) {
+            texasSkin = fallback.id;
+        }
+        return;
+    }
+
+    texasSkin = skinId;
+
+    if (!characters.texas) return;
+
+    const currentTexas = characters.texas;
+    const currentPosition = currentTexas.getBounds ? currentTexas.getBounds() : null;
+    const startX = currentPosition ? currentPosition.x : currentTexas.spine?.x || screenWidth / 2;
+    const startY = currentTexas.spine?.y || screenHeight - 80;
+    const wasVisible = currentTexas.isEnabled;
+    const moveDirection = currentTexas.moveDirection || 'right';
+
+    hideOperatorCharacter('texas');
+
+    if (wasVisible) {
+        const success = await showOperatorCharacter('texas', {
+            modelFolder: skin.modelFolder,
+            modelName: skin.modelName,
+            startX,
+            startY
+        });
+        if (success && characters.texas) {
+            characters.texas.setDirection(moveDirection);
+        }
+    }
 }
 
 function showOperatorPanel() {
     const operators = [
         { id: 'texas', name: 'Texas', checked: selectedOperators.has('texas') },
-        { id: 'kalts', name: "Kal'tsit", checked: selectedOperators.has('kalts') },
-        { id: 'texas2', name: 'Texas the Omertosa', checked: selectedOperators.has('texas2') }
+        { id: 'kalts', name: "Kal'tsit", checked: selectedOperators.has('kalts') }
     ];
 
     operatorPanel.show({
@@ -349,7 +522,7 @@ function showOperatorPanel() {
     });
 }
 
-async function showOperatorCharacter(operatorId) {
+async function showOperatorCharacter(operatorId, overrideOptions = {}) {
     if (characters[operatorId]) {
         characters[operatorId].show();
         selectedOperators.add(operatorId);
@@ -362,6 +535,21 @@ async function showOperatorCharacter(operatorId) {
         return false;
     }
 
+    if (operatorId === 'texas' && !overrideOptions.modelFolder) {
+        let skin = TEXAS_SKIN_OPTIONS.find(item => item.id === texasSkin);
+        if (!skin || !isTexasSkinAvailable(skin)) {
+            skin = getDefaultTexasSkin();
+            texasSkin = skin.id;
+        }
+        if (skin) {
+            overrideOptions = {
+                modelFolder: skin.modelFolder,
+                modelName: skin.modelName,
+                ...overrideOptions
+            };
+        }
+    }
+
     let CharacterClass;
     switch (operatorId) {
         case 'texas':
@@ -369,9 +557,6 @@ async function showOperatorCharacter(operatorId) {
             break;
         case 'kalts':
             CharacterClass = KaltsitCharacter;
-            break;
-        case 'texas2':
-            CharacterClass = Texas2Character;
             break;
         default:
             console.error(`[Renderer] Unknown character class for: ${operatorId}`);
@@ -393,7 +578,8 @@ async function showOperatorCharacter(operatorId) {
         screenHeight,
         modelsBasePath,
         startX,
-        startY
+        startY,
+        ...overrideOptions
     });
 
     try {
