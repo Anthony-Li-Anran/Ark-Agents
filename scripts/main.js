@@ -6,6 +6,7 @@ const { ScheduleManager } = require('../Amiya/src/modules/schedule/schedule-mana
 const { MemoManager } = require('../Amiya/src/modules/memo/memo-manager');
 const { ReminderManager } = require('../Amiya/src/modules/reminder/reminder-manager');
 const { AIToolRegistry } = require('../Amiya/src/modules/ai/ai-tools');
+const { FileManager } = require('../Texas/src/modules/file-manager');
 
 process.env['ELECTRON_DISABLE_SECURITY_WARNINGS'] = 'true';
 
@@ -21,6 +22,7 @@ let scheduleManager = null;
 let memoManager = null;
 let reminderManager = null;
 let aiToolRegistry = null;
+let fileManager = null;
 
 // Base paths
 const AMIVA_SRC_PATH = path.join(__dirname, '../Amiya/src');
@@ -641,6 +643,7 @@ app.whenReady().then(() => {
     memoManager = new MemoManager(app.getPath('userData'));
     reminderManager = new ReminderManager(app.getPath('userData'));
     aiToolRegistry = new AIToolRegistry({ scheduleManager, memoManager, reminderManager });
+    fileManager = new FileManager();
     
     createMainWindow();
     createTray();

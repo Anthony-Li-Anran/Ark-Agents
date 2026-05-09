@@ -69,6 +69,7 @@ let pendingChatAfterSetup = false;
 let chatActivationInProgress = false;
 let contextMenuTargetId = null;
 let texasSkin = 'default';
+let fileManagementMode = false;
 
 const TEXAS_SKIN_OPTIONS = [
     {
@@ -255,6 +256,10 @@ function initDragHandler() {
             }
         },
         onClick: (id, char) => {
+            if (fileManagementMode && id === 'texas') {
+                showAIBubble('请将文件拖拽到我身上进行整理', false, 3000);
+                return;
+            }
             if (chatVisible && id === 'amiya') {
                 messageInput?.focus();
             } else {
@@ -281,6 +286,100 @@ function initDragHandler() {
             showContextMenu(e.clientX, e.clientY, charId, bounds);
         } else {
             hideContextMenu();
+        }
+    });
+    
+    canvasContainer.addEventListener('dragover', (e) => {
+        if (!fileManagementMode) return;
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'copy';
+    });
+    
+    canvasContainer.addEventListener('drop', async (e) => {
+        if (!fileManagementMode) return;
+        
+        e.preventDefault();
+        
+        const { charId } = getCharacterAtPoint(e.clientX, e.clientY) || {};
+        if (charId !== 'texas') {
+            showAIBubble('请将文件拖拽到 Texas 身上', false, 2000);
+            return;
+        }
+        
+        const files = [];
+        const items = e.dataTransfer.items;
+        
+        if (items) {
+            for (let i = 0; i < items.length; i++) {
+                const item = items[i];
+                if (item.kind === 'file') {
+                    const file = item.getAsFile();
+                    if (file && file.path) {
+                        files.push(file.path);
+                    }
+                }
+            }
+        }
+        
+        const fileList = e.dataTransfer.files;
+        if (fileList) {
+            for (let i = 0; i < fileList.length; i++) {
+                const file = fileList[i];
+                if (file.path && !files.includes(file.path)) {
+                    files.push(file.path);
+                }
+            }
+        }
+        
+        console.log('[Renderer] Dropped files:', files);
+        
+        if (files.length === 0) {
+            showAIBubble('未检测到有效文件', false, 2000);
+            return;
+        }
+        
+        showAIBubble(`检测到 ${files.length} 个文件，正在整理...`, false, 0);
+        
+        const organizeResult = await ipcRenderer.invoke('file-manager-organize-files', files);
+        
+        if (organizeResult.success && organizeResult.moved.length > 0) {
+            const categorySummary = Object.entries(organizeResult.categories)
+                .map(([cat, f]) => `${cat}: ${f.length}个`)
+                .join(', ');
+            showAIBubble(`整理完成！已移动 ${organizeResult.moved.length} 个文件（${categorySummary}）。按 Esc 退出。`, false, 4000);
+            
+            // Easter egg: Play Special animation if Texas is using Epoque #7 skin
+            if (texasSkin === 'ep7' && characters.texas) {
+                const texas = characters.texas;
+                texas.isUserInteracting = true;
+                if (texas.animationTimer) {
+                    clearTimeout(texas.animationTimer);
+                    texas.animationTimer = null;
+                }
+                texas.stopMoving();
+
+                const specialAnimation = texas.resolveAnimationName('Special');
+                const specialListener = {
+                    complete(trackEntry) {
+                        if (trackEntry.animation.name === specialAnimation) {
+                            texas.isUserInteracting = false;
+                            texas.scheduleNextAnimation(chatVisible);
+                            if (texas.spine && texas.spine.state) {
+                                texas.spine.state.removeListener(specialListener);
+                            }
+                        }
+                    }
+                };
+
+                if (texas.spine && texas.spine.state) {
+                    texas.spine.state.addListener(specialListener);
+                }
+                texas.playAnimation('Special', false);
+            }
+        } else if (organizeResult.errors.length > 0) {
+            showAIBubble(`整理完成，但有 ${organizeResult.errors.length} 个文件移动失败。按 Esc 退出。`, true, 4000);
+        } else {
+            showAIBubble('没有文件需要整理。按 Esc 退出。', false, 3000);
         }
     });
 }
@@ -339,7 +438,7 @@ function showContextMenu(x, y, charId, bounds) {
     const menuY = bounds.y + bounds.height / 2 - 100;
     const customContent = charId === 'texas' ? buildTexasSkinSwitcher() : null;
     const menuItems = charId === 'texas'
-        ? [{ id: 'exit', label: 'Exit' }]
+        ? [{ id: 'file-management', label: 'File management' }, { id: 'exit', label: 'Exit' }]
         : CONTEXT_MENU_ITEMS;
 
     contextMenu.show(menuX, menuY, {
@@ -373,6 +472,11 @@ function hideContextMenu() {
 async function onContextMenuAction(actionId) {
     if (actionId === 'exit') {
         hideContextMenu();
+        return;
+    }
+    if (actionId === 'file-management') {
+        hideContextMenu();
+        enterFileManagementMode();
         return;
     }
     if (actionId === 'chat') {
@@ -806,9 +910,16 @@ function hideAIBubble() {
 }
 
 function updateAIBubblePosition() {
-    if (!aiBubble || !amiya) return;
+    if (!aiBubble) return;
 
-    const bounds = amiya.getBounds();
+    let targetChar = amiya;
+    if (fileManagementMode && characters.texas) {
+        targetChar = characters.texas;
+    }
+    
+    if (!targetChar) return;
+
+    const bounds = targetChar.getBounds();
     if (!bounds) return;
 
     const bubbleWidth = aiBubble.offsetWidth || 200;
@@ -1081,6 +1192,42 @@ function sendMessageToAI(message) {
         showAIBubble('抱歉，发生了错误：' + error.message, true, CHAT_BUBBLE_DURATION_MS);
     });
 }
+
+function enterFileManagementMode() {
+    if (fileManagementMode) return;
+    
+    fileManagementMode = true;
+    console.log('[Renderer] Entered file management mode');
+    
+    if (characters.texas) {
+        characters.texas.playAnimation('Relax', true);
+    }
+    
+    showAIBubble('整理模式已启动。将桌面文件拖拽到我身上进行整理。按 Esc 退出。', false, 6000);
+    
+    document.body.classList.add('file-management-mode');
+}
+
+function exitFileManagementMode() {
+    if (!fileManagementMode) return;
+    
+    fileManagementMode = false;
+    console.log('[Renderer] Exited file management mode');
+    
+    document.body.classList.remove('file-management-mode');
+    
+    showAIBubble('已退出整理模式', false, 2000);
+    
+    if (characters.texas) {
+        characters.texas.scheduleNextAnimation(chatVisible);
+    }
+}
+
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && fileManagementMode) {
+        exitFileManagementMode();
+    }
+});
 
 document.addEventListener('DOMContentLoaded', () => {
     initCSS();
