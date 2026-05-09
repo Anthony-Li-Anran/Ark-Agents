@@ -4,749 +4,581 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Amiya - Schedule</title>
+    <link rel="stylesheet" href="styles/dashboard.css">
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
-            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
-            min-height: 100vh;
-            padding: 20px;
-            color: #333;
-        }
-
-        .container {
-            max-width: 800px;
-            margin: 0 auto;
-        }
-
-        .header {
-            text-align: center;
-            margin-bottom: 30px;
-            color: white;
-        }
-
-        .header h1 {
-            font-size: 28px;
-            margin-bottom: 10px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-        }
-
-        .header p {
-            color: rgba(255, 255, 255, 0.6);
-            font-size: 14px;
-        }
-
-        /* Add button */
-        .add-btn {
-            position: fixed;
-            bottom: 30px;
-            right: 30px;
-            width: 56px;
-            height: 56px;
-            border-radius: 50%;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            border: none;
-            font-size: 24px;
-            cursor: pointer;
-            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
-            transition: all 0.3s;
+        .schedule-list {
             display: flex;
-            align-items: center;
-            justify-content: center;
-            z-index: 100;
+            flex-direction: column;
+            gap: 0.5rem;
         }
-
-        .add-btn:hover {
-            transform: scale(1.1);
-            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.5);
-        }
-
-        /* Stepper Box - From Uiverse.io by PriyanshuGupta28 */
-        .stepper-box {
-            background-color: white;
-            border-radius: 12px;
-            padding: 32px;
-            width: 100%;
-            max-width: 400px;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
-            margin: 0 auto 20px;
-        }
-
-        .stepper-step {
+        
+        .schedule-item {
             display: flex;
-            margin-bottom: 32px;
-            position: relative;
+            align-items: flex-start;
+            gap: 1rem;
+            padding: 1rem;
+            border-radius: var(--radius);
+            border: 1px solid hsl(var(--border));
+            background: hsl(var(--card));
+            transition: all 0.15s ease;
         }
-
-        .stepper-step:last-child {
-            margin-bottom: 0;
+        
+        .schedule-item:hover {
+            border-color: hsl(var(--ring));
         }
-
-        .stepper-line {
-            position: absolute;
-            left: 19px;
-            top: 40px;
-            bottom: -32px;
-            width: 2px;
-            background-color: #e2e8f0;
-            z-index: 1;
+        
+        .schedule-item.completed {
+            opacity: 0.6;
         }
-
-        .stepper-step:last-child .stepper-line {
-            display: none;
-        }
-
-        .stepper-circle {
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin-right: 16px;
-            z-index: 2;
-            font-size: 14px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s;
-        }
-
-        .stepper-completed .stepper-circle {
-            background-color: #0f172a;
-            color: white;
-        }
-
-        .stepper-active .stepper-circle {
-            border: 2px solid #0f172a;
-            color: #0f172a;
-        }
-
-        .stepper-pending .stepper-circle {
-            border: 2px solid #e2e8f0;
-            color: #94a3b8;
-        }
-
-        .stepper-content {
-            flex: 1;
-        }
-
-        .stepper-title {
-            font-weight: 600;
-            margin-bottom: 4px;
-            font-size: 16px;
-        }
-
-        .stepper-completed .stepper-title {
-            color: #0f172a;
+        
+        .schedule-item.completed .schedule-title {
             text-decoration: line-through;
         }
-
-        .stepper-active .stepper-title {
-            color: #0f172a;
-        }
-
-        .stepper-pending .stepper-title {
-            color: #94a3b8;
-        }
-
-        .stepper-desc {
-            font-size: 13px;
-            color: #64748b;
-            margin-bottom: 8px;
-        }
-
-        .stepper-status {
-            font-size: 12px;
-            display: inline-block;
-            padding: 2px 10px;
-            border-radius: 12px;
-            margin-right: 8px;
-        }
-
-        .stepper-completed .stepper-status {
-            background-color: #dcfce7;
-            color: #166534;
-        }
-
-        .stepper-active .stepper-status {
-            background-color: #dbeafe;
-            color: #1d4ed8;
-        }
-
-        .stepper-pending .stepper-status {
-            background-color: #f1f5f9;
-            color: #64748b;
-        }
-
-        .stepper-time {
-            font-size: 12px;
-            color: #94a3b8;
-            margin-top: 4px;
-        }
-
-        .stepper-actions {
-            display: flex;
-            gap: 8px;
-            margin-top: 8px;
-        }
-
-        .stepper-action-btn {
-            padding: 4px 10px;
-            font-size: 12px;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-
-        .stepper-action-btn.edit {
-            background: #dbeafe;
-            color: #1d4ed8;
-        }
-
-        .stepper-action-btn.delete {
-            background: #fee2e2;
-            color: #dc2626;
-        }
-
-        .stepper-action-btn:hover {
-            opacity: 0.8;
-        }
-
-        .stepper-controls {
-            display: flex;
-            justify-content: space-between;
-            margin-top: 32px;
-        }
-
-        .stepper-button {
-            padding: 8px 16px;
-            border-radius: 6px;
-            border: 1px solid #e2e8f0;
-            background-color: white;
-            cursor: pointer;
+        
+        .schedule-checkbox {
+            width: 1.5rem;
+            height: 1.5rem;
+            border-radius: 50%;
+            border: 2px solid hsl(var(--border));
             display: flex;
             align-items: center;
-            gap: 6px;
+            justify-content: center;
+            cursor: pointer;
+            flex-shrink: 0;
+            margin-top: 0.125rem;
+            transition: all 0.15s ease;
         }
-
-        .stepper-button-primary {
-            background-color: #0f172a;
-            color: white;
-            border-color: #0f172a;
+        
+        .schedule-checkbox:hover {
+            border-color: hsl(var(--primary));
         }
-
-        /* Empty state */
-        .empty-state {
-            text-align: center;
-            padding: 60px 20px;
-            color: #94a3b8;
+        
+        .schedule-checkbox.checked {
+            background: hsl(var(--primary));
+            border-color: hsl(var(--primary));
+            color: hsl(var(--primary-foreground));
         }
-
-        .empty-state-icon {
-            font-size: 48px;
-            margin-bottom: 16px;
+        
+        .schedule-content {
+            flex: 1;
+            min-width: 0;
         }
-
-        /* Modal */
+        
+        .schedule-title {
+            font-weight: 500;
+            margin-bottom: 0.25rem;
+        }
+        
+        .schedule-description {
+            font-size: 0.875rem;
+            color: hsl(var(--muted-foreground));
+            margin-bottom: 0.5rem;
+        }
+        
+        .schedule-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            align-items: center;
+        }
+        
+        .schedule-actions {
+            display: flex;
+            gap: 0.5rem;
+            opacity: 0;
+            transition: opacity 0.15s ease;
+        }
+        
+        .schedule-item:hover .schedule-actions {
+            opacity: 1;
+        }
+        
+        .fab {
+            position: fixed;
+            bottom: 1.5rem;
+            right: 1.5rem;
+            width: 3.5rem;
+            height: 3.5rem;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            z-index: 100;
+        }
+        
         .modal-overlay {
             position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
+            inset: 0;
             background: rgba(0, 0, 0, 0.5);
             display: none;
             align-items: center;
             justify-content: center;
             z-index: 1000;
         }
-
+        
         .modal-overlay.active {
             display: flex;
         }
-
+        
         .modal {
-            background: white;
-            border-radius: 16px;
-            padding: 32px;
+            background: hsl(var(--card));
+            border-radius: var(--radius);
+            padding: 1.5rem;
             width: 90%;
             max-width: 500px;
             max-height: 90vh;
             overflow-y: auto;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
         }
-
+        
         .modal-header {
-            font-size: 20px;
+            font-size: 1.25rem;
             font-weight: 600;
-            margin-bottom: 24px;
-            color: #0f172a;
+            margin-bottom: 1.5rem;
         }
-
+        
         .form-group {
-            margin-bottom: 16px;
+            margin-bottom: 1rem;
         }
-
+        
         .form-label {
             display: block;
-            font-size: 14px;
+            font-size: 0.875rem;
             font-weight: 500;
-            color: #374151;
-            margin-bottom: 6px;
+            margin-bottom: 0.375rem;
         }
-
-        .form-input,
-        .form-select,
-        .form-textarea {
-            width: 100%;
-            padding: 10px 14px;
-            border: 1px solid #e2e8f0;
-            border-radius: 8px;
-            font-size: 14px;
-            transition: all 0.2s;
+        
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
         }
-
-        .form-input:focus,
-        .form-select:focus,
-        .form-textarea:focus {
-            outline: none;
-            border-color: #667eea;
-            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
-        }
-
-        .form-textarea {
-            min-height: 80px;
-            resize: vertical;
-        }
-
-        .modal-actions {
+        
+        .modal-footer {
             display: flex;
-            gap: 12px;
+            gap: 0.75rem;
             justify-content: flex-end;
-            margin-top: 24px;
+            margin-top: 1.5rem;
+            padding-top: 1rem;
+            border-top: 1px solid hsl(var(--border));
         }
-
-        /* Success Card - From Uiverse.io by akshat-patel28 */
-        .success-card {
+        
+        .toast {
             position: fixed;
-            top: 20px;
-            right: 20px;
-            width: 330px;
-            height: 80px;
-            border-radius: 8px;
-            box-sizing: border-box;
-            padding: 10px 15px;
-            background-color: #ffffff;
-            box-shadow: rgba(149, 157, 165, 0.2) 0px 8px 24px;
-            position: fixed;
-            overflow: hidden;
+            top: 1.5rem;
+            right: 1.5rem;
+            background: hsl(var(--card));
+            border: 1px solid hsl(var(--border));
+            border-radius: var(--radius);
+            padding: 1rem;
             display: none;
             align-items: center;
-            justify-content: space-around;
-            gap: 15px;
+            gap: 0.75rem;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
             z-index: 2000;
-            animation: slideIn 0.3s ease;
+            animation: slideIn 0.2s ease;
         }
-
-        .success-card.active {
+        
+        .toast.active {
             display: flex;
         }
-
-        @keyframes slideIn {
-            from {
-                transform: translateX(400px);
-                opacity: 0;
-            }
-            to {
-                transform: translateX(0);
-                opacity: 1;
-            }
-        }
-
-        .success-wave {
-            position: absolute;
-            transform: rotate(90deg);
-            left: -31px;
-            top: 32px;
-            width: 80px;
-            fill: #04e4003a;
-        }
-
-        .success-icon-container {
-            width: 35px;
-            height: 35px;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            background-color: #04e40048;
+        
+        .toast-icon {
+            width: 1.5rem;
+            height: 1.5rem;
             border-radius: 50%;
-            margin-left: 8px;
-        }
-
-        .success-icon {
-            width: 17px;
-            height: 17px;
-            color: #269b24;
-        }
-
-        .success-message-container {
+            background: 142 76% 36%;
+            color: white;
             display: flex;
-            flex-direction: column;
+            align-items: center;
             justify-content: center;
-            align-items: flex-start;
-            flex-grow: 1;
+            font-size: 0.75rem;
         }
-
-        .success-message-text {
-            color: #269b24;
-            font-size: 17px;
-            font-weight: 700;
-            margin: 0;
+        
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
         }
-
-        .success-sub-text {
-            font-size: 14px;
-            color: #555;
-            margin: 0;
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 1rem;
+            margin-bottom: 1.5rem;
         }
-
-        .success-close {
-            width: 18px;
-            height: 18px;
-            color: #555;
-            cursor: pointer;
+        
+        .stat-card {
+            padding: 1rem;
+            border-radius: var(--radius);
+            border: 1px solid hsl(var(--border));
+            background: hsl(var(--card));
         }
-
-        /* Priority badges */
-        .priority-high { background: #fee2e2; color: #dc2626; }
-        .priority-medium { background: #fef3c7; color: #d97706; }
-        .priority-low { background: #dbeafe; color: #2563eb; }
-
-        /* Category badges */
-        .category-badge {
-            font-size: 11px;
-            padding: 2px 8px;
-            border-radius: 10px;
-            margin-right: 6px;
+        
+        .stat-value {
+            font-size: 1.5rem;
+            font-weight: 600;
+        }
+        
+        .stat-label {
+            font-size: 0.75rem;
+            color: hsl(var(--muted-foreground));
+            margin-top: 0.25rem;
+        }
+        
+        @media (max-width: 768px) {
+            .stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            .form-row {
+                grid-template-columns: 1fr;
+            }
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <div class="header">
-            <h1>🐰 博士的待办清单</h1>
-            <p>让阿米娅帮您管理任务</p>
-        </div>
-
-        <!-- Todo List -->
-        <div class="stepper-box" id="todo-list">
-            <div class="empty-state">
-                <div class="empty-state-icon">📋</div>
-                <p>暂无待办事项</p>
-                <p style="font-size: 12px; margin-top: 8px;">点击"新建任务"添加第一个待办</p>
+    <div class="dashboard-layout">
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <div class="sidebar-logo">S</div>
+                <span class="sidebar-title">Schedule</span>
             </div>
-        </div>
+            
+            <div class="sidebar-content">
+                <div class="mb-3">
+                    <input class="input" id="search" placeholder="Search tasks...">
+                </div>
+                
+                <div class="mb-4">
+                    <div class="text-xs text-muted font-medium mb-2">FILTER BY STATUS</div>
+                    <div class="list-item active" data-filter="all" onclick="setFilter('all')">
+                        <div class="list-item-icon">📋</div>
+                        <div class="list-item-content">
+                            <div class="list-item-title">All Tasks</div>
+                        </div>
+                    </div>
+                    <div class="list-item" data-filter="pending" onclick="setFilter('pending')">
+                        <div class="list-item-icon">⏳</div>
+                        <div class="list-item-content">
+                            <div class="list-item-title">Pending</div>
+                        </div>
+                    </div>
+                    <div class="list-item" data-filter="in_progress" onclick="setFilter('in_progress')">
+                        <div class="list-item-icon">🔄</div>
+                        <div class="list-item-content">
+                            <div class="list-item-title">In Progress</div>
+                        </div>
+                    </div>
+                    <div class="list-item" data-filter="completed" onclick="setFilter('completed')">
+                        <div class="list-item-icon">✅</div>
+                        <div class="list-item-content">
+                            <div class="list-item-title">Completed</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </aside>
+        
+        <main class="main-content">
+            <div class="page-header">
+                <div>
+                    <h1 class="page-title">Schedule</h1>
+                    <p class="page-description">Manage your tasks and deadlines</p>
+                </div>
+                <button class="btn btn-primary btn-md" onclick="openAddModal()">+ New Task</button>
+            </div>
+            
+            <div class="stats-grid" id="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-value" id="stat-total">0</div>
+                    <div class="stat-label">Total</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="stat-pending">0</div>
+                    <div class="stat-label">Pending</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="stat-progress">0</div>
+                    <div class="stat-label">In Progress</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="stat-completed">0</div>
+                    <div class="stat-label">Completed</div>
+                </div>
+            </div>
+            
+            <div class="card">
+                <div class="schedule-list" id="schedule-list"></div>
+            </div>
+        </main>
     </div>
-
-    <!-- Add/Edit Modal -->
+    
+    <button class="btn btn-primary fab" onclick="openAddModal()">+</button>
+    
     <div class="modal-overlay" id="modal">
         <div class="modal">
-            <div class="modal-header" id="modal-title">新建任务</div>
-            <form id="todo-form">
-                <input type="hidden" id="todo-id">
+            <div class="modal-header" id="modal-title">New Task</div>
+            <form id="task-form">
+                <input type="hidden" id="task-id">
+                
                 <div class="form-group">
-                    <label class="form-label">标题 *</label>
-                    <input type="text" class="form-input" id="todo-title" placeholder="输入任务标题" required>
+                    <label class="form-label">Title *</label>
+                    <input class="input" type="text" id="task-title" placeholder="Task title" required>
                 </div>
+                
                 <div class="form-group">
-                    <label class="form-label">描述</label>
-                    <textarea class="form-textarea" id="todo-description" placeholder="输入任务描述（可选）"></textarea>
+                    <label class="form-label">Description</label>
+                    <textarea class="textarea" id="task-description" placeholder="Add details..." style="min-height: 80px;"></textarea>
                 </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">Status</label>
+                        <select class="select" id="task-status">
+                            <option value="pending">Pending</option>
+                            <option value="in_progress">In Progress</option>
+                            <option value="completed">Completed</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Priority</label>
+                        <select class="select" id="task-priority">
+                            <option value="low">Low</option>
+                            <option value="medium" selected>Medium</option>
+                            <option value="high">High</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">Category</label>
+                        <select class="select" id="task-category"></select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Due Date</label>
+                        <input class="input" type="datetime-local" id="task-due-date">
+                    </div>
+                </div>
+                
                 <div class="form-group">
-                    <label class="form-label">状态</label>
-                    <select class="form-select" id="todo-status">
-                        <option value="pending">待办</option>
-                        <option value="in_progress">进行中</option>
-                        <option value="completed">已完成</option>
-                    </select>
+                    <label class="form-label">Tags (comma separated)</label>
+                    <input class="input" type="text" id="task-tags" placeholder="work, urgent">
                 </div>
-                <div class="form-group">
-                    <label class="form-label">优先级</label>
-                    <select class="form-select" id="todo-priority">
-                        <option value="low">低</option>
-                        <option value="medium" selected>中</option>
-                        <option value="high">高</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label class="form-label">分类</label>
-                    <select class="form-select" id="todo-category">
-                        <!-- Categories will be loaded dynamically -->
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label class="form-label">截止日期</label>
-                    <input type="datetime-local" class="form-input" id="todo-due-date">
-                </div>
-                <div class="form-group">
-                    <label class="form-label">标签（用逗号分隔）</label>
-                    <input type="text" class="form-input" id="todo-tags" placeholder="例如: 工作, 紧急">
-                </div>
-                <div class="modal-actions">
-                    <button type="button" class="btn btn-secondary" onclick="closeModal()">取消</button>
-                    <button type="submit" class="btn btn-primary">保存</button>
+                
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline btn-md" onclick="closeModal()">Cancel</button>
+                    <button type="submit" class="btn btn-primary btn-md">Save</button>
                 </div>
             </form>
         </div>
     </div>
-
-    <!-- Add Button -->
-    <button class="add-btn" onclick="openAddModal()">+</button>
-
-    <!-- Success Card -->
-    <div class="success-card" id="success-card">
-        <svg class="success-wave" viewBox="0 0 1440 320" xmlns="http://www.w3.org/2000/svg">
-            <path fill="#04e4003a" fill-opacity="1" d="M0,224L48,213.3C96,203,192,181,288,181.3C384,181,480,203,576,224C672,245,768,267,864,250.7C960,235,1056,181,1152,165.3C1248,149,1344,171,1392,181.3L1440,192L1440,320L1392,320C1344,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,320,48,320L0,320Z"></path>
-        </svg>
-        <div class="success-icon-container">
-            <svg class="success-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <polyline points="20 6 9 17 4 12"></polyline>
-            </svg>
+    
+    <div class="toast" id="toast">
+        <div class="toast-icon">✓</div>
+        <div>
+            <div class="font-medium" id="toast-title">Success</div>
+            <div class="text-sm text-muted" id="toast-message">Task saved</div>
         </div>
-        <div class="success-message-container">
-            <p class="success-message-text" id="success-title">成功</p>
-            <p class="success-sub-text" id="success-message">操作已完成</p>
-        </div>
-        <svg class="success-close" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" onclick="hideSuccessCard()">
-            <line x1="18" y1="6" x2="6" y2="18"></line>
-            <line x1="6" y1="6" x2="18" y2="18"></line>
-        </svg>
     </div>
 
     <script>
         const { ipcRenderer } = require('electron');
 
+        let schedules = [];
         let categories = [];
-        const scheduleCopy = {
-            emptyTitle: '暂无日程',
-            emptyHint: '点击 + 添加第一项日程',
-            addTitle: '新建日程',
-            editTitle: '编辑日程'
-        };
+        let currentFilter = 'all';
 
-        // Initialize
         async function init() {
-            document.title = 'Amiya - Schedule';
-            const headerTitle = document.querySelector('.header h1');
-            const headerDesc = document.querySelector('.header p');
-            if (headerTitle) headerTitle.textContent = '博士的日程';
-            if (headerDesc) headerDesc.textContent = '让阿米娅帮您管理安排与计划';
             await loadCategories();
-            await loadTodos();
+            await loadSchedules();
         }
 
-        // Load categories
         async function loadCategories() {
             categories = await ipcRenderer.invoke('schedule-get-categories');
-            const select = document.getElementById('todo-category');
+            const select = document.getElementById('task-category');
             select.innerHTML = categories.map(cat => 
                 `<option value="${cat.id}">${cat.name}</option>`
             ).join('');
         }
 
-        // Load todos
-        async function loadTodos() {
-            const todos = await ipcRenderer.invoke('schedule-get-all');
-            renderTodos(todos);
+        async function loadSchedules() {
+            schedules = await ipcRenderer.invoke('schedule-get-all');
+            renderSchedules();
+            updateStats();
         }
 
-        // Render todos
-        function renderTodos(todos) {
-            const container = document.getElementById('todo-list');
+        function setFilter(filter) {
+            currentFilter = filter;
+            document.querySelectorAll('[data-filter]').forEach(el => {
+                el.classList.toggle('active', el.dataset.filter === filter);
+            });
+            renderSchedules();
+        }
+
+        function renderSchedules() {
+            const container = document.getElementById('schedule-list');
+            let filtered = schedules;
             
-            if (todos.length === 0) {
+            if (currentFilter !== 'all') {
+                filtered = schedules.filter(s => s.status === currentFilter);
+            }
+            
+            const searchQuery = document.getElementById('search').value.toLowerCase();
+            if (searchQuery) {
+                filtered = filtered.filter(s => 
+                    s.title.toLowerCase().includes(searchQuery) ||
+                    (s.description || '').toLowerCase().includes(searchQuery)
+                );
+            }
+            
+            if (filtered.length === 0) {
                 container.innerHTML = `
                     <div class="empty-state">
                         <div class="empty-state-icon">📅</div>
-                        <p>${scheduleCopy.emptyTitle}</p>
-                        <p style="font-size: 12px; margin-top: 8px;">${scheduleCopy.emptyHint}</p>
-                    </div>
-                `;
-                return;
-                container.innerHTML = `
-                    <div class="empty-state">
-                        <div class="empty-state-icon">📋</div>
-                        <p>暂无待办事项</p>
-                        <p style="font-size: 12px; margin-top: 8px;">点击"新建任务"添加第一个待办</p>
+                        <div class="empty-state-title">No tasks found</div>
+                        <div class="empty-state-description">Click + to create a new task</div>
                     </div>
                 `;
                 return;
             }
-
-            // Sort: pending/in_progress first, then by priority, then by due date
+            
             const priorityOrder = { high: 0, medium: 1, low: 2 };
-            todos.sort((a, b) => {
+            filtered.sort((a, b) => {
                 if (a.status === 'completed' && b.status !== 'completed') return 1;
                 if (a.status !== 'completed' && b.status === 'completed') return -1;
-                if (priorityOrder[a.priority] !== priorityOrder[b.priority]) {
-                    return priorityOrder[a.priority] - priorityOrder[b.priority];
-                }
-                if (a.dueDate && b.dueDate) {
-                    return new Date(a.dueDate) - new Date(b.dueDate);
-                }
-                return 0;
+                return priorityOrder[a.priority] - priorityOrder[b.priority];
             });
-
-            container.innerHTML = todos.map((todo, index) => {
-                const statusClass = todo.status === 'completed' ? 'stepper-completed' : 
-                                   todo.status === 'in_progress' ? 'stepper-active' : 'stepper-pending';
-                const statusText = todo.status === 'completed' ? '已完成' : 
-                                  todo.status === 'in_progress' ? '进行中' : '待办';
-                const category = categories.find(c => c.id === todo.categoryId);
-                const categoryColor = category ? category.color : '#667eea';
+            
+            container.innerHTML = filtered.map(task => {
+                const category = categories.find(c => c.id === task.categoryId);
+                const isCompleted = task.status === 'completed';
                 
                 return `
-                    <div class="stepper-step ${statusClass}">
-                        <div class="stepper-line"></div>
-                        <div class="stepper-circle" onclick="toggleTodoStatus('${todo.id}')">
-                            ${todo.status === 'completed' ? '✓' : index + 1}
+                    <div class="schedule-item ${isCompleted ? 'completed' : ''}">
+                        <div class="schedule-checkbox ${isCompleted ? 'checked' : ''}" onclick="toggleStatus('${task.id}')">
+                            ${isCompleted ? '✓' : ''}
                         </div>
-                        <div class="stepper-content">
-                            <div class="stepper-title">${escapeHtml(todo.title)}</div>
-                            ${todo.description ? `<div class="stepper-desc">${escapeHtml(todo.description)}</div>` : ''}
-                            <div>
-                                <span class="stepper-status">${statusText}</span>
-                                <span class="category-badge" style="background: ${categoryColor}20; color: ${categoryColor}">
-                                    ${category ? category.name : '默认'}
+                        <div class="schedule-content">
+                            <div class="schedule-title">${escapeHtml(task.title)}</div>
+                            ${task.description ? `<div class="schedule-description">${escapeHtml(task.description)}</div>` : ''}
+                            <div class="schedule-meta">
+                                <span class="badge badge-${task.status === 'completed' ? 'success' : task.status === 'in_progress' ? 'warning' : 'secondary'}">
+                                    ${task.status === 'completed' ? 'Completed' : task.status === 'in_progress' ? 'In Progress' : 'Pending'}
                                 </span>
-                                <span class="stepper-status priority-${todo.priority}">
-                                    ${todo.priority === 'high' ? '高' : todo.priority === 'medium' ? '中' : '低'}优先级
-                                </span>
+                                <span class="badge badge-outline">${task.priority}</span>
+                                ${category ? `<span class="badge badge-default" style="background: ${category.color}; color: white;">${category.name}</span>` : ''}
+                                ${task.dueDate ? `<span class="text-xs text-muted">📅 ${formatDate(task.dueDate)}</span>` : ''}
                             </div>
-                            ${todo.dueDate ? `<div class="stepper-time">📅 截止: ${formatDate(todo.dueDate)}</div>` : ''}
-                            <div class="stepper-actions">
-                                <button class="stepper-action-btn edit" onclick="editTodo('${todo.id}')">编辑</button>
-                                <button class="stepper-action-btn delete" onclick="deleteTodo('${todo.id}')">删除</button>
-                            </div>
+                        </div>
+                        <div class="schedule-actions">
+                            <button class="btn btn-ghost btn-sm" onclick="editTask('${task.id}')">Edit</button>
+                            <button class="btn btn-ghost btn-sm" onclick="deleteTask('${task.id}')">Delete</button>
                         </div>
                     </div>
                 `;
             }).join('');
         }
 
-        // Toggle todo status
-        async function toggleTodoStatus(id) {
-            const todo = await ipcRenderer.invoke('schedule-get-by-id', id);
-            if (!todo) return;
-
-            const newStatus = todo.status === 'completed' ? 'pending' : 'completed';
-            await ipcRenderer.invoke('schedule-update', id, { status: newStatus });
+        function updateStats() {
+            const total = schedules.length;
+            const pending = schedules.filter(s => s.status === 'pending').length;
+            const progress = schedules.filter(s => s.status === 'in_progress').length;
+            const completed = schedules.filter(s => s.status === 'completed').length;
             
-            await loadTodos();
+            document.getElementById('stat-total').textContent = total;
+            document.getElementById('stat-pending').textContent = pending;
+            document.getElementById('stat-progress').textContent = progress;
+            document.getElementById('stat-completed').textContent = completed;
+        }
+
+        async function toggleStatus(id) {
+            const task = schedules.find(s => s.id === id);
+            if (!task) return;
+            
+            const newStatus = task.status === 'completed' ? 'pending' : 'completed';
+            await ipcRenderer.invoke('schedule-update', id, { status: newStatus });
+            await loadSchedules();
             
             if (newStatus === 'completed') {
-                showSuccessCard('任务完成', `已完成: ${todo.title}`);
+                showToast('Task completed', task.title);
             }
         }
 
-        // Open add modal
         function openAddModal() {
-            document.getElementById('modal-title').textContent = '新建任务';
-            document.getElementById('todo-form').reset();
-            document.getElementById('modal-title').textContent = scheduleCopy.addTitle;
-            document.getElementById('todo-id').value = '';
+            document.getElementById('modal-title').textContent = 'New Task';
+            document.getElementById('task-form').reset();
+            document.getElementById('task-id').value = '';
             document.getElementById('modal').classList.add('active');
         }
 
-        // Edit todo
-        async function editTodo(id) {
-            const todo = await ipcRenderer.invoke('schedule-get-by-id', id);
-            if (!todo) return;
-
-            document.getElementById('modal-title').textContent = '编辑任务';
-            document.getElementById('todo-id').value = todo.id;
-            document.getElementById('modal-title').textContent = scheduleCopy.editTitle;
-            document.getElementById('todo-title').value = todo.title;
-            document.getElementById('todo-description').value = todo.description || '';
-            document.getElementById('todo-status').value = todo.status;
-            document.getElementById('todo-priority').value = todo.priority;
-            document.getElementById('todo-category').value = todo.categoryId;
-            document.getElementById('todo-due-date').value = todo.dueDate ? todo.dueDate.slice(0, 16) : '';
-            document.getElementById('todo-tags').value = todo.tags ? todo.tags.join(', ') : '';
+        async function editTask(id) {
+            const task = await ipcRenderer.invoke('schedule-get-by-id', id);
+            if (!task) return;
+            
+            document.getElementById('modal-title').textContent = 'Edit Task';
+            document.getElementById('task-id').value = task.id;
+            document.getElementById('task-title').value = task.title;
+            document.getElementById('task-description').value = task.description || '';
+            document.getElementById('task-status').value = task.status;
+            document.getElementById('task-priority').value = task.priority;
+            document.getElementById('task-category').value = task.categoryId;
+            document.getElementById('task-due-date').value = task.dueDate ? task.dueDate.slice(0, 16) : '';
+            document.getElementById('task-tags').value = (task.tags || []).join(', ');
             
             document.getElementById('modal').classList.add('active');
         }
 
-        // Close modal
         function closeModal() {
             document.getElementById('modal').classList.remove('active');
         }
 
-        // Delete todo
-        async function deleteTodo(id) {
-            const todo = await ipcRenderer.invoke('schedule-get-by-id', id);
-            if (!confirm(`确定要删除任务 "${todo.title}" 吗？`)) return;
-
+        async function deleteTask(id) {
+            const task = schedules.find(s => s.id === id);
+            if (!confirm(`Delete "${task.title}"?`)) return;
+            
             await ipcRenderer.invoke('schedule-delete', id);
-            await loadTodos();
-            showSuccessCard('删除成功', `已删除: ${todo.title}`);
+            await loadSchedules();
+            showToast('Task deleted', task.title);
         }
 
-        // Form submit
-        document.getElementById('todo-form').addEventListener('submit', async (e) => {
+        document.getElementById('task-form').addEventListener('submit', async (e) => {
             e.preventDefault();
             
-            const id = document.getElementById('todo-id').value;
-            const todoData = {
-                title: document.getElementById('todo-title').value,
-                description: document.getElementById('todo-description').value,
-                status: document.getElementById('todo-status').value,
-                priority: document.getElementById('todo-priority').value,
-                categoryId: document.getElementById('todo-category').value,
-                dueDate: document.getElementById('todo-due-date').value || null,
-                tags: document.getElementById('todo-tags').value.split(',').map(t => t.trim()).filter(t => t)
+            const id = document.getElementById('task-id').value;
+            const data = {
+                title: document.getElementById('task-title').value,
+                description: document.getElementById('task-description').value,
+                status: document.getElementById('task-status').value,
+                priority: document.getElementById('task-priority').value,
+                categoryId: document.getElementById('task-category').value,
+                dueDate: document.getElementById('task-due-date').value || null,
+                tags: document.getElementById('task-tags').value.split(',').map(t => t.trim()).filter(t => t)
             };
-
+            
             if (id) {
-                await ipcRenderer.invoke('schedule-update', id, todoData);
-                showSuccessCard('更新成功', `已更新: ${todoData.title}`);
+                await ipcRenderer.invoke('schedule-update', id, data);
+                showToast('Task updated', data.title);
             } else {
-                await ipcRenderer.invoke('schedule-create', todoData);
-                showSuccessCard('创建成功', `已添加: ${todoData.title}`);
+                await ipcRenderer.invoke('schedule-create', data);
+                showToast('Task created', data.title);
             }
-
+            
             closeModal();
-            await loadTodos();
-            await updateStats();
+            await loadSchedules();
         });
 
-        // Show success card
-        function showSuccessCard(title, message) {
-            document.getElementById('success-title').textContent = title;
-            document.getElementById('success-message').textContent = message;
-            const card = document.getElementById('success-card');
-            card.classList.add('active');
+        function showToast(title, message) {
+            document.getElementById('toast-title').textContent = title;
+            document.getElementById('toast-message').textContent = message;
+            document.getElementById('toast').classList.add('active');
             
             setTimeout(() => {
-                hideSuccessCard();
+                document.getElementById('toast').classList.remove('active');
             }, 3000);
         }
 
-        // Hide success card
-        function hideSuccessCard() {
-            document.getElementById('success-card').classList.remove('active');
-        }
-
-        // Utility functions
         function escapeHtml(text) {
             if (!text) return '';
             const div = document.createElement('div');
@@ -755,23 +587,16 @@
         }
 
         function formatDate(dateString) {
-            const date = new Date(dateString);
-            return date.toLocaleString('zh-CN', {
-                month: 'short',
-                day: 'numeric',
-                hour: '2-digit',
-                minute: '2-digit'
+            return new Date(dateString).toLocaleDateString('zh-CN', {
+                month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
             });
         }
 
-        // Close modal on overlay click
+        document.getElementById('search').addEventListener('input', renderSchedules);
         document.getElementById('modal').addEventListener('click', (e) => {
-            if (e.target.id === 'modal') {
-                closeModal();
-            }
+            if (e.target.id === 'modal') closeModal();
         });
 
-        // Initialize on load
         init();
     </script>
 </body>

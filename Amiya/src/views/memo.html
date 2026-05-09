@@ -4,166 +4,152 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Amiya - Memo</title>
+    <link rel="stylesheet" href="styles/dashboard.css">
     <style>
-        * { box-sizing: border-box; }
-        body {
-            margin: 0;
-            min-height: 100vh;
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei", sans-serif;
-            color: #243044;
-            background: #f7f4ef;
-        }
-        .shell {
-            display: grid;
-            grid-template-columns: 280px 1fr;
-            min-height: 100vh;
-        }
-        .sidebar {
-            border-right: 1px solid #ddd6ca;
-            background: #fffaf2;
-            padding: 20px;
-        }
-        .header {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            margin-bottom: 16px;
-        }
-        h1 {
-            margin: 0;
-            font-size: 22px;
-            color: #334155;
-        }
-        .new-btn, .save-btn, .delete-btn {
-            border: 0;
-            border-radius: 8px;
-            cursor: pointer;
-            font-weight: 600;
-        }
-        .new-btn {
-            width: 36px;
-            height: 36px;
-            color: white;
-            background: #4f46e5;
-            font-size: 22px;
-        }
-        .search {
-            width: 100%;
-            height: 36px;
-            border: 1px solid #d6cec1;
-            border-radius: 8px;
-            padding: 0 12px;
-            margin-bottom: 14px;
-            background: white;
-        }
         .memo-list {
             display: flex;
             flex-direction: column;
-            gap: 8px;
+            gap: 0.25rem;
         }
+        
         .memo-item {
-            border: 1px solid transparent;
-            border-radius: 8px;
-            padding: 10px;
+            padding: 0.625rem 0.75rem;
+            border-radius: calc(var(--radius) - 2px);
             cursor: pointer;
-            background: rgba(255, 255, 255, 0.7);
+            transition: all 0.15s ease;
+            border: 1px solid transparent;
         }
+        
+        .memo-item:hover {
+            background: hsl(var(--accent));
+        }
+        
         .memo-item.active {
-            border-color: #4f46e5;
-            background: white;
+            background: hsl(var(--accent));
+            border-color: hsl(var(--ring));
         }
-        .memo-title {
-            font-size: 14px;
-            font-weight: 700;
-            margin-bottom: 4px;
+        
+        .memo-item-title {
+            font-weight: 500;
+            font-size: 0.8125rem;
+            margin-bottom: 0.125rem;
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
         }
-        .memo-preview {
-            font-size: 12px;
-            color: #64748b;
+        
+        .memo-item-preview {
+            font-size: 0.6875rem;
+            color: hsl(var(--muted-foreground));
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
         }
-        .editor {
-            padding: 24px;
+        
+        .editor-card {
             display: flex;
             flex-direction: column;
-            gap: 14px;
+            height: calc(100vh - 7rem);
         }
-        .editor-top {
+        
+        .editor-body {
+            flex: 1;
             display: flex;
-            gap: 10px;
-            align-items: center;
+            flex-direction: column;
+            gap: 0.75rem;
+            overflow: hidden;
         }
+        
         .title-input {
-            flex: 1;
-            height: 44px;
-            border: 1px solid #d6cec1;
-            border-radius: 8px;
-            padding: 0 12px;
-            font-size: 18px;
-            font-weight: 700;
+            height: 2.25rem;
+            font-size: 1rem;
+            font-weight: 600;
         }
+        
         .tags-input {
-            height: 36px;
-            border: 1px solid #d6cec1;
-            border-radius: 8px;
-            padding: 0 12px;
+            height: 2rem;
+            font-size: 0.8125rem;
         }
-        textarea {
+        
+        .content-textarea {
             flex: 1;
-            min-height: 420px;
+            min-height: 0;
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+            font-size: 0.875rem;
+            line-height: 1.6;
             resize: none;
-            border: 1px solid #d6cec1;
-            border-radius: 8px;
-            padding: 14px;
-            font: 14px/1.6 Consolas, "Microsoft YaHei", monospace;
         }
-        .save-btn {
-            height: 40px;
-            padding: 0 18px;
-            color: white;
-            background: #2563eb;
+        
+        .editor-footer {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding-top: 0.75rem;
+            margin-top: 0.75rem;
+            border-top: 1px solid hsl(var(--border));
+            flex-shrink: 0;
         }
-        .delete-btn {
-            height: 40px;
-            padding: 0 14px;
-            color: white;
-            background: #dc2626;
+        
+        .search-row {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 0.75rem;
         }
-        .meta {
-            color: #64748b;
-            font-size: 12px;
+        
+        .search-input {
+            flex: 1;
+            height: 2rem;
+            font-size: 0.8125rem;
         }
-        .empty {
-            padding: 16px;
-            color: #64748b;
-            text-align: center;
+        
+        .add-btn {
+            width: 2rem;
+            height: 2rem;
+            padding: 0;
+            font-size: 1rem;
         }
     </style>
 </head>
 <body>
-    <div class="shell">
+    <div class="dashboard-layout">
         <aside class="sidebar">
-            <div class="header">
-                <h1>Memo</h1>
-                <button class="new-btn" onclick="newMemo()" title="新建">+</button>
+            <div class="sidebar-header">
+                <div class="sidebar-logo">M</div>
+                <span class="sidebar-title">Memo</span>
             </div>
-            <input class="search" id="search" placeholder="搜索 memo">
-            <div class="memo-list" id="memo-list"></div>
+            
+            <div class="search-row">
+                <input class="input search-input" id="search" placeholder="Search...">
+                <button class="btn btn-primary add-btn" onclick="newMemo()" title="New Memo">+</button>
+            </div>
+            
+            <div class="sidebar-content">
+                <div class="memo-list" id="memo-list"></div>
+            </div>
         </aside>
-        <main class="editor">
-            <div class="editor-top">
-                <input class="title-input" id="memo-title" placeholder="标题">
-                <button class="save-btn" onclick="saveMemo()">保存</button>
-                <button class="delete-btn" onclick="deleteCurrentMemo()">删除</button>
+        
+        <main class="main-content">
+            <div class="page-header">
+                <div>
+                    <h1 class="page-title" id="page-title">Memo</h1>
+                    <p class="page-description">Create and manage your notes</p>
+                </div>
             </div>
-            <input class="tags-input" id="memo-tags" placeholder="标签，用逗号分隔">
-            <textarea id="memo-content" placeholder="写下要记住的内容..."></textarea>
-            <div class="meta" id="memo-meta">未选择 memo</div>
+            
+            <div class="card editor-card">
+                <div class="editor-body">
+                    <input class="input title-input" id="memo-title" placeholder="Title">
+                    <input class="input tags-input" id="memo-tags" placeholder="Tags (comma separated)">
+                    <textarea class="textarea content-textarea" id="memo-content" placeholder="Write your notes here..."></textarea>
+                </div>
+                <div class="editor-footer">
+                    <span class="text-sm text-muted" id="memo-meta">No memo selected</span>
+                    <div class="flex gap-2">
+                        <button class="btn btn-outline btn-sm" onclick="deleteCurrentMemo()">Delete</button>
+                        <button class="btn btn-primary btn-sm" onclick="saveMemo()">Save</button>
+                    </div>
+                </div>
+            </div>
         </main>
     </div>
 
@@ -189,14 +175,20 @@
         function renderList() {
             const list = document.getElementById('memo-list');
             if (memos.length === 0) {
-                list.innerHTML = '<div class="empty">暂无 memo</div>';
+                list.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">📝</div>
+                        <div class="empty-state-title">No memos</div>
+                        <div class="empty-state-description">Click + to create</div>
+                    </div>
+                `;
                 return;
             }
 
             list.innerHTML = memos.map(memo => `
                 <div class="memo-item ${memo.id === currentId ? 'active' : ''}" onclick="selectMemo('${memo.id}')">
-                    <div class="memo-title">${escapeHtml(memo.title || 'Untitled')}</div>
-                    <div class="memo-preview">${escapeHtml((memo.content || '').slice(0, 80))}</div>
+                    <div class="memo-item-title">${escapeHtml(memo.title || 'Untitled')}</div>
+                    <div class="memo-item-preview">${escapeHtml((memo.content || '').slice(0, 50))}</div>
                 </div>
             `).join('');
         }
@@ -210,6 +202,7 @@
             document.getElementById('memo-content').value = memo.content || '';
             document.getElementById('memo-tags').value = (memo.tags || []).join(', ');
             document.getElementById('memo-meta').textContent = `Updated ${formatDate(memo.updatedAt)}`;
+            document.getElementById('page-title').textContent = memo.title || 'Memo';
             renderList();
         }
 
@@ -219,6 +212,7 @@
             document.getElementById('memo-content').value = '';
             document.getElementById('memo-tags').value = '';
             document.getElementById('memo-meta').textContent = 'New memo';
+            document.getElementById('page-title').textContent = 'New Memo';
             document.getElementById('memo-title').focus();
             renderList();
         }
@@ -234,16 +228,18 @@
                 ? await ipcRenderer.invoke('memo-update', currentId, memoData)
                 : await ipcRenderer.invoke('memo-create', memoData);
             currentId = memo.id;
+            document.getElementById('page-title').textContent = memo.title || 'Memo';
             await loadMemos(document.getElementById('search').value);
             await selectMemo(currentId);
         }
 
         async function deleteCurrentMemo() {
             if (!currentId) return;
-            if (!confirm('确定要删除这个 memo 吗？')) return;
+            if (!confirm('Delete this memo?')) return;
 
             await ipcRenderer.invoke('memo-delete', currentId);
             currentId = null;
+            document.getElementById('page-title').textContent = 'Memo';
             await loadMemos(document.getElementById('search').value);
         }
 
@@ -252,7 +248,8 @@
             document.getElementById('memo-title').value = '';
             document.getElementById('memo-content').value = '';
             document.getElementById('memo-tags').value = '';
-            document.getElementById('memo-meta').textContent = '未选择 memo';
+            document.getElementById('memo-meta').textContent = 'No memo selected';
+            document.getElementById('page-title').textContent = 'Memo';
         }
 
         function escapeHtml(text) {

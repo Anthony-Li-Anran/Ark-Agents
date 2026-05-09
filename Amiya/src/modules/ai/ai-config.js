@@ -20,7 +20,15 @@ const defaultConfig = {
     apiKey: '',
     isFirstRun: true,
     isConfigured: false,
-    isFirstConnect: true // Show takeover message on first successful connection
+    isFirstConnect: true, // Show takeover message on first successful connection
+    mirror: 'auto' // 'auto', 'official', 'aliyun', 'custom'
+};
+
+const mirrors = {
+    auto: { name: 'Auto (自动选择)', url: null },
+    official: { name: 'Official (官方)', url: null },
+    aliyun: { name: 'Aliyun (阿里云镜像)', url: 'https://mirrors.aliyun.com/ollama' },
+    tencent: { name: 'Tencent (腾讯云镜像)', url: 'https://mirrors.cloud.tencent.com/ollama' }
 };
 
 // Supported providers
@@ -387,7 +395,7 @@ class AIConfigManager {
     }
 
     // Pull a model in Ollama
-    async pullModel(modelName, sender = null) {
+    async pullModel(modelName, sender = null, mirrorKey = null) {
         return new Promise((resolve) => {
             this.getOllamaExecutable().then((ollamaPath) => {
                 if (!ollamaPath) {
@@ -401,9 +409,33 @@ class AIConfigManager {
                     status: `Starting download for ${modelName}...`
                 });
 
+                // 设置镜像源和模型路径环境变量
+                const env = { ...process.env };
+                const selectedMirror = mirrorKey || this.config.mirror || 'auto';
+                
+                if (selectedMirror !== 'auto' && mirrors[selectedMirror]?.url) {
+                    env.OLLAMA_MIRRORS = mirrors[selectedMirror].url;
+                    this.sendPullProgress(sender, {
+                        modelName,
+                        percent: 0,
+                        status: `Using mirror: ${mirrors[selectedMirror].name}`
+                    });
+                }
+
+                // 设置自定义模型存储路径
+                if (this.config.modelPath) {
+                    env.OLLAMA_MODELS = this.config.modelPath;
+                    this.sendPullProgress(sender, {
+                        modelName,
+                        percent: 0,
+                        status: `Saving to: ${this.config.modelPath}`
+                    });
+                }
+
                 const pullProcess = spawn(ollamaPath, ['pull', modelName], {
                     detached: false,
-                    windowsHide: true
+                    windowsHide: true,
+                    env: env
                 });
 
             let output = '';
@@ -470,6 +502,21 @@ class AIConfigManager {
         });
     }
 
+    // Delete a model from Ollama
+    async deleteModel(modelName) {
+        try {
+            const ollamaPath = await this.getOllamaExecutable();
+            if (!ollamaPath) {
+                return { success: false, message: 'Ollama executable was not found.' };
+            }
+
+            const { stdout, stderr } = await execPromise(`"${ollamaPath}" rm "${modelName}"`);
+            return { success: true, message: `Model ${modelName} deleted.` };
+        } catch (error) {
+            return { success: false, message: error.message };
+        }
+    }
+
     // Setup IPC handlers
     setupIPC() {
         // Get current config
@@ -503,8 +550,8 @@ class AIConfigManager {
         });
 
         // Pull model
-        ipcMain.handle('ai-pull-model', async (event, modelName) => {
-            return await this.pullModel(modelName, event.sender);
+        ipcMain.handle('ai-pull-model', async (event, modelName, mirrorKey) => {
+            return await this.pullModel(modelName, event.sender, mirrorKey);
         });
 
         ipcMain.handle('ai-list-ollama-models', async () => {
@@ -516,6 +563,43 @@ class AIConfigManager {
             return providers;
         });
 
+        // Get mirrors info
+        ipcMain.handle('ai-get-mirrors', () => {
+            return mirrors;
+        });
+
+        // Select model storage path
+        ipcMain.handle('ai-select-model-path', async () => {
+            const result = await dialog.showOpenDialog({
+                title: 'Select Model Storage Folder',
+                properties: ['openDirectory', 'createDirectory'],
+                buttonLabel: 'Select Folder'
+            });
+            
+            if (!result.canceled && result.filePaths.length > 0) {
+                const selectedPath = result.filePaths[0];
+                this.config.modelPath = selectedPath;
+                this.saveConfig();
+                return { path: selectedPath };
+            }
+            return null;
+        });
+
+        // Get current model path
+        ipcMain.handle('ai-get-model-path', () => {
+            return this.config.modelPath || process.env.OLLAMA_MODELS || null;
+        });
+
+        // Get installed models
+        ipcMain.handle('ai-get-installed-models', async () => {
+            return await this.listOllamaModels();
+        });
+
+        // Delete a model
+        ipcMain.handle('ai-delete-model', async (event, modelName) => {
+            return await this.deleteModel(modelName);
+        });
+
         // Mark as connected (disable first connect message)
         ipcMain.handle('ai-mark-connected', () => {
             this.config.isFirstConnect = false;
@@ -524,4 +608,4 @@ class AIConfigManager {
     }
 }
 
-module.exports = { AIConfigManager, providers };
+module.exports = { AIConfigManager, providers, mirrors };

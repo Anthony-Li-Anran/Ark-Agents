@@ -583,32 +583,24 @@ async function showOperatorCharacter(operatorId, overrideOptions = {}) {
     });
 
     try {
-        console.log(`[Renderer] Loading ${operatorId} model...`);
         await char.load();
-        console.log(`[Renderer] ${operatorId} model loaded successfully`);
 
         char.show();
         characters[operatorId] = char;
         selectedOperators.add(operatorId);
 
-        console.log(`[Renderer] ${operatorId} character shown successfully`);
         return true;
     } catch (error) {
         console.error(`[Renderer] Failed to load ${operatorId}:`, error.message);
-        console.error('[Renderer] Error stack:', error.stack);
         return false;
     }
 }
 
 function hideOperatorCharacter(operatorId) {
-    console.log(`[Renderer] Hiding operator: ${operatorId}`);
     if (characters[operatorId]) {
         characters[operatorId].hide();
         delete characters[operatorId];
         selectedOperators.delete(operatorId);
-        console.log(`[Renderer] Operator ${operatorId} hidden and removed`);
-    } else {
-        console.log(`[Renderer] Operator ${operatorId} not found in characters`);
     }
 }
 
@@ -875,6 +867,16 @@ function createChatUI() {
     inputContainer.style.display = 'flex';
     inputContainer.style.alignItems = 'center';
 
+    // 设置按钮（齿轮图标）
+    const settingsBtn = document.createElement('button');
+    settingsBtn.className = 'settings-btn';
+    settingsBtn.innerHTML = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="12" cy="12" r="3"></circle>
+        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+    </svg>`;
+    settingsBtn.title = 'AI 设置';
+    settingsBtn.onclick = showAISettings;
+
     const messageBox = document.createElement('div');
     messageBox.className = 'messageBox';
 
@@ -903,6 +905,7 @@ function createChatUI() {
     exitChatBtn.title = '退出聊天';
     exitChatBtn.onclick = hideChatUI;
 
+    inputContainer.appendChild(settingsBtn);
     inputContainer.appendChild(messageBox);
     inputContainer.appendChild(exitChatBtn);
     chatInputWrapper.appendChild(inputContainer);
@@ -927,6 +930,132 @@ function updateChatPosition() {
     updateAIBubblePosition();
     updateLoadingSpinnerPosition();
     updateNotificationPosition();
+}
+
+let aiSettingsModal = null;
+
+function showAISettings() {
+    if (aiSettingsModal) {
+        hideAISettings();
+        return;
+    }
+
+    const overlay = document.createElement('div');
+    overlay.className = 'ai-settings-overlay';
+    overlay.onclick = hideAISettings;
+
+    const modal = document.createElement('div');
+    modal.className = 'ai-settings-modal';
+    modal.innerHTML = `
+        <h3>⚙️ AI 设置</h3>
+        <div class="setting-group">
+            <label class="setting-label">当前模型</label>
+            <select id="ai-model-select"></select>
+        </div>
+        <div class="setting-group">
+            <label class="setting-label">已安装的模型</label>
+            <div class="model-list" id="installed-models-list"></div>
+        </div>
+        <div class="setting-group">
+            <label class="setting-label">下载镜像源</label>
+            <select id="ai-mirror-select"></select>
+        </div>
+        <div class="setting-group">
+            <label class="setting-label">模型存储位置</label>
+            <div class="path-row">
+                <input type="text" id="ai-model-path" placeholder="默认位置" readonly>
+                <button class="btn btn-secondary" onclick="selectAIModelPath()">选择</button>
+            </div>
+        </div>
+        <div class="btn-row">
+            <button class="btn btn-secondary" onclick="hideAISettings()">关闭</button>
+            <button class="btn btn-primary" onclick="saveAISettings()">保存</button>
+        </div>
+    `;
+
+    overlay.appendChild(modal);
+    document.body.appendChild(overlay);
+    aiSettingsModal = { overlay, modal };
+
+    loadAISettings();
+}
+
+async function loadAISettings() {
+    const config = await ipcRenderer.invoke('ai-get-config');
+    const models = await ipcRenderer.invoke('ai-get-installed-models');
+    const mirrors = await ipcRenderer.invoke('ai-get-mirrors');
+    const modelPath = await ipcRenderer.invoke('ai-get-model-path');
+
+    // 填充模型选择
+    const modelSelect = document.getElementById('ai-model-select');
+    if (models.success && models.models.length > 0) {
+        modelSelect.innerHTML = models.models.map(m => 
+            `<option value="${m.name || m.id || m.model}" ${config.model === (m.name || m.id || m.model) ? 'selected' : ''}>
+                ${m.name || m.id || m.model} (${m.size || ''})
+            </option>`
+        ).join('');
+    } else {
+        modelSelect.innerHTML = '<option value="">无可用模型</option>';
+    }
+
+    // 填充已安装模型列表
+    const modelsList = document.getElementById('installed-models-list');
+    if (models.success && models.models.length > 0) {
+        modelsList.innerHTML = models.models.map(m => `
+            <div class="model-item">
+                <div>
+                    <div class="model-name">${m.name || m.id || m.model}</div>
+                    <div class="model-size">${m.size || ''}</div>
+                </div>
+                <button class="delete-btn" onclick="deleteAIModel('${m.name || m.id || m.model}')">删除</button>
+            </div>
+        `).join('');
+    } else {
+        modelsList.innerHTML = '<div class="empty-text">暂无已安装的模型</div>';
+    }
+
+    // 填充镜像源选择
+    const mirrorSelect = document.getElementById('ai-mirror-select');
+    mirrorSelect.innerHTML = Object.entries(mirrors).map(([key, mirror]) =>
+        `<option value="${key}" ${config.mirror === key ? 'selected' : ''}>${mirror.name}</option>`
+    ).join('');
+
+    // 填充模型路径
+    document.getElementById('ai-model-path').value = modelPath || '默认位置';
+}
+
+async function selectAIModelPath() {
+    const result = await ipcRenderer.invoke('ai-select-model-path');
+    if (result && result.path) {
+        document.getElementById('ai-model-path').value = result.path;
+    }
+}
+
+async function deleteAIModel(modelName) {
+    if (!confirm(`确定要删除模型 "${modelName}" 吗？`)) return;
+    
+    const result = await ipcRenderer.invoke('ai-delete-model', modelName);
+    if (result.success) {
+        loadAISettings();
+    } else {
+        alert('删除失败: ' + result.message);
+    }
+}
+
+async function saveAISettings() {
+    const model = document.getElementById('ai-model-select').value;
+    const mirror = document.getElementById('ai-mirror-select').value;
+
+    await ipcRenderer.invoke('ai-update-config', { model, mirror });
+    hideAISettings();
+    showAIBubble('设置已保存', false, 2000);
+}
+
+function hideAISettings() {
+    if (aiSettingsModal) {
+        aiSettingsModal.overlay.remove();
+        aiSettingsModal = null;
+    }
 }
 
 function sendUserMessage() {

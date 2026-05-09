@@ -17,7 +17,7 @@ const defaultReminders = [
         title: '喝水提醒',
         message: '博士，该补充水分了。',
         frequencyMinutes: 60,
-        enabled: true,
+        enabled: false,
         category: 'health'
     },
     {
@@ -25,7 +25,7 @@ const defaultReminders = [
         title: '久坐提醒',
         message: '博士，起来活动一下吧。',
         frequencyMinutes: 45,
-        enabled: true,
+        enabled: false,
         category: 'health'
     },
     {
@@ -33,7 +33,7 @@ const defaultReminders = [
         title: '护眼提醒',
         message: '博士，请让眼睛休息一会儿。',
         frequencyMinutes: 30,
-        enabled: true,
+        enabled: false,
         category: 'health'
     }
 ];

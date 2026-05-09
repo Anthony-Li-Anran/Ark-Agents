@@ -166,6 +166,275 @@ function getStyles() {
   background-color: #3d3d3d;
 }
 
+/* Settings button - gear icon */
+.settings-btn {
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: hsl(240 10% 3.9%);
+  border-radius: 10px;
+  border: 1px solid hsl(240 5.9% 90%);
+  color: hsl(0 0% 98%);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  margin-right: 8px;
+  flex-shrink: 0;
+}
+.settings-btn:hover {
+  border-color: hsl(240 5.9% 10%);
+  background-color: hsl(240 3.7% 15.9%);
+}
+
+/* AI Settings Modal - Shadcn Style */
+.ai-settings-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.6);
+  z-index: 1999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ai-settings-modal {
+  background: hsl(0 0% 100%);
+  border: 1px solid hsl(240 5.9% 90%);
+  border-radius: 0.5rem;
+  padding: 1.5rem;
+  width: 90%;
+  max-width: 400px;
+  max-height: 85vh;
+  overflow-y: auto;
+  z-index: 2000;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+}
+
+.ai-settings-modal h3 {
+  color: hsl(240 10% 3.9%);
+  font-size: 1.125rem;
+  font-weight: 600;
+  margin-bottom: 1rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid hsl(240 5.9% 90%);
+}
+
+.ai-settings-modal .setting-group {
+  margin-bottom: 1rem;
+}
+
+.ai-settings-modal .setting-label {
+  color: hsl(240 10% 3.9%);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  margin-bottom: 0.375rem;
+  display: block;
+}
+
+.ai-settings-modal select,
+.ai-settings-modal input {
+  width: 100%;
+  height: 2.25rem;
+  padding: 0 0.75rem;
+  background: hsl(0 0% 100%);
+  border: 1px solid hsl(240 5.9% 90%);
+  border-radius: 0.375rem;
+  color: hsl(240 10% 3.9%);
+  font-size: 0.875rem;
+  transition: border-color 0.15s ease;
+}
+
+.ai-settings-modal select:focus,
+.ai-settings-modal input:focus {
+  outline: none;
+  border-color: hsl(240 5.9% 10%);
+  box-shadow: 0 0 0 1px hsl(240 5.9% 10%);
+}
+
+.ai-settings-modal .model-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  max-height: 180px;
+  overflow-y: auto;
+  border: 1px solid hsl(240 5.9% 90%);
+  border-radius: 0.375rem;
+  padding: 0.5rem;
+  background: hsl(240 4.8% 95.9%);
+}
+
+.ai-settings-modal .model-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.625rem 0.75rem;
+  background: hsl(0 0% 100%);
+  border-radius: 0.375rem;
+  border: 1px solid hsl(240 5.9% 90%);
+}
+
+.ai-settings-modal .model-item .model-name {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: hsl(240 10% 3.9%);
+}
+
+.ai-settings-modal .model-item .model-size {
+  font-size: 0.75rem;
+  color: hsl(240 3.8% 46.1%);
+}
+
+.ai-settings-modal .model-item .delete-btn {
+  background: transparent;
+  border: 1px solid hsl(0 84.2% 60.2%);
+  color: hsl(0 84.2% 60.2%);
+  cursor: pointer;
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.25rem;
+  font-size: 0.6875rem;
+  font-weight: 500;
+  transition: all 0.15s ease;
+}
+
+.ai-settings-modal .model-item .delete-btn:hover {
+  background: hsl(0 84.2% 60.2%);
+  color: hsl(0 0% 98%);
+}
+
+.ai-settings-modal .empty-text {
+  color: hsl(240 3.8% 46.1%);
+  font-size: 0.8125rem;
+  text-align: center;
+  padding: 1rem;
+}
+
+.ai-settings-modal .path-row {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.ai-settings-modal .path-row input {
+  flex: 1;
+}
+
+.ai-settings-modal .path-row button {
+  flex-shrink: 0;
+  height: 2.25rem;
+  padding: 0 0.75rem;
+}
+
+.ai-settings-modal .btn-row {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 1.25rem;
+  padding-top: 1rem;
+  border-top: 1px solid hsl(240 5.9% 90%);
+}
+
+.ai-settings-modal .btn {
+  flex: 1;
+  height: 2.25rem;
+  border-radius: 0.375rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  border: none;
+  transition: all 0.15s ease;
+}
+
+.ai-settings-modal .btn-primary {
+  background: hsl(240 5.9% 10%);
+  color: hsl(0 0% 98%);
+}
+
+.ai-settings-modal .btn-primary:hover {
+  background: hsl(240 5.9% 10% / 0.9);
+}
+
+.ai-settings-modal .btn-secondary {
+  background: hsl(240 4.8% 95.9%);
+  color: hsl(240 5.9% 10%);
+  border: 1px solid hsl(240 5.9% 90%);
+}
+
+.ai-settings-modal .btn-secondary:hover {
+  background: hsl(240 4.8% 95.9% / 0.8);
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+  .settings-btn {
+    background-color: hsl(240 10% 3.9%);
+    border-color: hsl(240 3.7% 15.9%);
+  }
+  .settings-btn:hover {
+    background-color: hsl(240 3.7% 15.9%);
+    border-color: hsl(240 4.9% 83.9%);
+  }
+  
+  .ai-settings-modal {
+    background: hsl(0 0% 100%);
+  }
+  
+  .ai-settings-modal h3 {
+    color: hsl(240 10% 3.9%);
+    border-bottom-color: hsl(240 5.9% 90%);
+  }
+  
+  .ai-settings-modal .setting-label {
+    color: hsl(240 10% 3.9%);
+  }
+  
+  .ai-settings-modal select,
+  .ai-settings-modal input {
+    background: hsl(0 0% 100%);
+    border-color: hsl(240 5.9% 90%);
+    color: hsl(240 10% 3.9%);
+  }
+  
+  .ai-settings-modal .model-list {
+    background: hsl(240 4.8% 95.9%);
+    border-color: hsl(240 5.9% 90%);
+  }
+  
+  .ai-settings-modal .model-item {
+    background: hsl(0 0% 100%);
+    border-color: hsl(240 5.9% 90%);
+  }
+  
+  .ai-settings-modal .model-item .model-name {
+    color: hsl(240 10% 3.9%);
+  }
+  
+  .ai-settings-modal .model-item .model-size {
+    color: hsl(240 3.8% 46.1%);
+  }
+  
+  .ai-settings-modal .empty-text {
+    color: hsl(240 3.8% 46.1%);
+  }
+  
+  .ai-settings-modal .btn-row {
+    border-top-color: hsl(240 5.9% 90%);
+  }
+  
+  .ai-settings-modal .btn-primary {
+    background: hsl(240 5.9% 10%);
+    color: hsl(0 0% 98%);
+  }
+  
+  .ai-settings-modal .btn-secondary {
+    background: hsl(240 4.8% 95.9%);
+    color: hsl(240 5.9% 10%);
+    border-color: hsl(240 5.9% 90%);
+  }
+}
+
 /* AI Speech Bubble - Minimalist Design */
 .ai-bubble {
   position: absolute;
