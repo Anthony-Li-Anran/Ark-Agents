@@ -53,6 +53,7 @@ const chatUI = require(path.join(scriptDir, 'chat-ui'));
 const contextMenu = require(path.join(scriptDir, 'context-menu'));
 const operatorPanel = require(path.join(scriptDir, 'operator-panel'));
 const notification = require(path.join(scriptDir, 'notification'));
+const { DialogRendererIntegration } = require(path.join(scriptDir, 'dialog-integration'));
 
 const canvasContainer = document.getElementById('canvas-container');
 
@@ -62,6 +63,7 @@ let characters = {};
 let screenWidth = 1920;
 let screenHeight = 1080;
 let startupGreetingShown = false;
+let dialogIntegration = null;
 
 let chatVisible = false;
 let isUserInteracting = false;
@@ -198,6 +200,46 @@ async function initPixi() {
 
     await loadAmiya();
     initDragHandler();
+    initDialogSystem();
+}
+
+async function initDialogSystem() {
+    try {
+        dialogIntegration = new DialogRendererIntegration();
+        await dialogIntegration.initialize(scriptDir);
+        
+        if (amiya) {
+            dialogIntegration.registerCharacter('amiya', amiya);
+        }
+        
+        for (const [charId, char] of Object.entries(characters)) {
+            if (char && char !== amiya) {
+                dialogIntegration.registerCharacter(charId, char);
+            }
+        }
+        
+        dialogIntegration.start();
+        
+        setInterval(() => {
+            if (dialogIntegration) {
+                dialogIntegration.checkTimeAndUpdate();
+            }
+        }, 60000);
+        
+        setInterval(() => {
+            if (dialogIntegration) {
+                for (const [charId, char] of Object.entries(characters)) {
+                    if (char && char.isEnabled && !char.isUserInteracting) {
+                        dialogIntegration.updateCharacterPosition(charId, char);
+                    }
+                }
+            }
+        }, 1000);
+        
+        console.log('[Renderer] Dialog system initialized and started');
+    } catch (error) {
+        console.error('[Renderer] Failed to initialize dialog system:', error);
+    }
 }
 
 async function loadAmiya() {
@@ -247,6 +289,9 @@ function initDragHandler() {
         },
         onDragMove: (id, char) => {
             updateChatPosition();
+            if (dialogIntegration) {
+                dialogIntegration.updateCharacterPosition(id, char);
+            }
         },
         onDragEnd: (id, char) => {
             if (!chatVisible) {
@@ -630,6 +675,9 @@ async function showOperatorCharacter(operatorId, overrideOptions = {}) {
     if (characters[operatorId]) {
         characters[operatorId].show();
         selectedOperators.add(operatorId);
+        if (dialogIntegration) {
+            dialogIntegration.registerCharacter(operatorId, characters[operatorId]);
+        }
         return true;
     }
 
@@ -693,6 +741,10 @@ async function showOperatorCharacter(operatorId, overrideOptions = {}) {
         characters[operatorId] = char;
         selectedOperators.add(operatorId);
 
+        if (dialogIntegration) {
+            dialogIntegration.registerCharacter(operatorId, char);
+        }
+
         return true;
     } catch (error) {
         console.error(`[Renderer] Failed to load ${operatorId}:`, error.message);
@@ -705,6 +757,10 @@ function hideOperatorCharacter(operatorId) {
         characters[operatorId].hide();
         delete characters[operatorId];
         selectedOperators.delete(operatorId);
+        
+        if (dialogIntegration) {
+            dialogIntegration.unregisterCharacter(operatorId);
+        }
     }
 }
 
@@ -749,6 +805,10 @@ function showChatUI(playRelaxAnimation = true, showTakeoverMessage = false) {
     if (chatVisible) return;
     chatVisible = true;
     isUserInteracting = true;
+
+    if (dialogIntegration) {
+        dialogIntegration.stop();
+    }
 
     if (playRelaxAnimation && amiya) {
         amiya.playAnimation('Relax', true);
@@ -862,6 +922,10 @@ function hideChatUI() {
     if (amiya) {
         amiya.playAnimation(getDefaultIdleAnimation(), true);
         amiya.scheduleNextAnimation(chatVisible);
+    }
+
+    if (dialogIntegration) {
+        dialogIntegration.start();
     }
 }
 
