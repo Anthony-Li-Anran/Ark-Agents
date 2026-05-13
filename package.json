@@ -8,7 +8,7 @@
   "scripts": {
     "start": "electron .",
     "dev": "electron . --dev",
-    "test": "node test-dialog-system.js && node test-kaltsit-agent.js && node test-health-agent.js && node test-project-skill-pool.js",
+    "test": "node test-dialog-system.js && node test-kaltsit-agent.js && node test-health-agent.js && node test-project-skill-pool.js && node test-file-manager.js && node test-software-monitoring.js",
     "build": "electron-builder",
     "build:win": "electron-builder --win",
     "build:mac": "electron-builder --mac",

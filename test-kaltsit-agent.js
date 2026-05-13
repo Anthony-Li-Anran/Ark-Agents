@@ -75,6 +75,9 @@ function verifyHealthAgentWiring() {
     assert.match(renderer, /health-sources/, 'Renderer must expose Kaltsit health sources action.');
     assert.match(renderer, /health-skills/, 'Renderer must expose Kaltsit health skills action.');
     assert.match(renderer, /kaltsit-health-response/, 'Renderer must listen for Kaltsit health responses.');
+    assert.match(renderer, /async function showKaltsitBubble/, 'Kaltsit health responses must use the Kaltsit render target.');
+    assert.match(renderer, /ensureOperatorCharacter\('kalts'\)/, 'Kaltsit health responses must summon Kaltsit before showing bubbles.');
+    assert.match(renderer, /id === 'kaltsit' \? 'kalts' : id/, 'Renderer must normalize Kaltsit aliases.');
     assert.match(renderer, /let aiBubbles = new Map\(\)/, 'Renderer must maintain one AI bubble per agent.');
     assert.match(renderer, /interruptAgentDialogForUser/, 'Renderer must interrupt agent dialogs during user interaction.');
     assert.match(renderer, /dialogIntegration\.interruptForUserInteraction/, 'Renderer must route user interruption into dialog integration.');

@@ -531,6 +531,32 @@ function interruptAgentDialogForUser(reason = 'user-interaction') {
     }
 }
 
+function normalizeRendererOperatorId(operatorId) {
+    const id = String(operatorId || '').toLowerCase();
+    return id === 'kaltsit' ? 'kalts' : id;
+}
+
+async function ensureOperatorCharacter(operatorId, overrideOptions = {}) {
+    const normalizedId = normalizeRendererOperatorId(operatorId);
+    if (!normalizedId || !app) return false;
+
+    if (characters[normalizedId]) {
+        characters[normalizedId].show();
+        selectedOperators.add(normalizedId);
+        if (dialogIntegration) {
+            dialogIntegration.registerCharacter(normalizedId, characters[normalizedId]);
+        }
+        return true;
+    }
+
+    return await showOperatorCharacter(normalizedId, overrideOptions);
+}
+
+async function showKaltsitBubble(message, isError = false, autoHideMs = CHAT_BUBBLE_DURATION_MS) {
+    const visible = await ensureOperatorCharacter('kalts');
+    showAIBubble(message, isError, autoHideMs, visible ? 'kalts' : null);
+}
+
 async function onContextMenuAction(actionId) {
     if (actionId === 'exit') {
         hideContextMenu();
@@ -704,6 +730,8 @@ function showOperatorPanel() {
 }
 
 async function showOperatorCharacter(operatorId, overrideOptions = {}) {
+    operatorId = normalizeRendererOperatorId(operatorId);
+
     if (characters[operatorId]) {
         characters[operatorId].show();
         selectedOperators.add(operatorId);
@@ -785,6 +813,8 @@ async function showOperatorCharacter(operatorId, overrideOptions = {}) {
 }
 
 function hideOperatorCharacter(operatorId) {
+    operatorId = normalizeRendererOperatorId(operatorId);
+
     if (characters[operatorId]) {
         characters[operatorId].hide();
         delete characters[operatorId];
@@ -1328,9 +1358,9 @@ function sendMessageToAI(message) {
 async function runKaltsitHealthCheck() {
     try {
         const result = await ipcRenderer.invoke('health-check-now');
-        showAIBubble(result.message, false, CHAT_BUBBLE_DURATION_MS, 'kalts');
+        await showKaltsitBubble(result.message);
     } catch (error) {
-        showAIBubble(`Kal'tsit\uff1a\u5065\u5eb7\u68c0\u67e5\u5931\u8d25\uff1a${error.message}`, true, CHAT_BUBBLE_DURATION_MS, 'kalts');
+        await showKaltsitBubble(`Kal'tsit\uff1a\u5065\u5eb7\u68c0\u67e5\u5931\u8d25\uff1a${error.message}`, true);
     }
 }
 
@@ -1340,9 +1370,9 @@ async function showKaltsitHealthSources() {
         const summary = sources
             .map(source => `${source.type}: ${source.enabled ? '\u542f\u7528' : '\u505c\u7528'} / ${source.status}`)
             .join('\n');
-        showAIBubble(`Kal'tsit\uff1a\u5065\u5eb7\u6765\u6e90\u72b6\u6001\uff1a\n${summary}`, false, CHAT_BUBBLE_DURATION_MS, 'kalts');
+        await showKaltsitBubble(`Kal'tsit\uff1a\u5065\u5eb7\u6765\u6e90\u72b6\u6001\uff1a\n${summary}`);
     } catch (error) {
-        showAIBubble(`Kal'tsit\uff1a\u6765\u6e90\u5de1\u68c0\u5931\u8d25\uff1a${error.message}`, true, CHAT_BUBBLE_DURATION_MS, 'kalts');
+        await showKaltsitBubble(`Kal'tsit\uff1a\u6765\u6e90\u5de1\u68c0\u5931\u8d25\uff1a${error.message}`, true);
     }
 }
 
@@ -1352,9 +1382,9 @@ async function showKaltsitHealthSkills() {
         const summary = skills
             .map(skill => `${skill.enabled ? '\u25cf' : '\u25cb'} ${skill.name}: ${skill.status}`)
             .join('\n');
-        showAIBubble(`Kal'tsit\uff1a\u5df2\u63a5\u5165\u7684\u5065\u5eb7\u6280\u80fd\uff1a\n${summary}`, false, CHAT_BUBBLE_DURATION_MS, 'kalts');
+        await showKaltsitBubble(`Kal'tsit\uff1a\u5df2\u63a5\u5165\u7684\u5065\u5eb7\u6280\u80fd\uff1a\n${summary}`);
     } catch (error) {
-        showAIBubble(`Kal'tsit\uff1a\u5065\u5eb7\u6280\u80fd\u68c0\u67e5\u5931\u8d25\uff1a${error.message}`, true, CHAT_BUBBLE_DURATION_MS, 'kalts');
+        await showKaltsitBubble(`Kal'tsit\uff1a\u5065\u5eb7\u6280\u80fd\u68c0\u67e5\u5931\u8d25\uff1a${error.message}`, true);
     }
 }
 
@@ -1397,7 +1427,10 @@ document.addEventListener('keydown', (e) => {
 ipcRenderer.on('kaltsit-health-response', (event, payload) => {
     const message = payload && payload.message ? payload.message : "Kal'tsit\uff1a\u5065\u5eb7\u72b6\u6001\u5df2\u66f4\u65b0\u3002";
     const isError = payload && (payload.severity === 'high' || payload.severity === 'crisis');
-    showAIBubble(message, isError, CHAT_BUBBLE_DURATION_MS, characters.kalts ? 'kalts' : null);
+    showKaltsitBubble(message, isError).catch((error) => {
+        console.error('[Renderer] Failed to show Kaltsit health response:', error);
+        showAIBubble(message, isError, CHAT_BUBBLE_DURATION_MS);
+    });
 });
 
 document.addEventListener('DOMContentLoaded', () => {
