@@ -67,15 +67,15 @@ class DialogRendererIntegration {
     handleDialogStart(dialogInfo) {
         const { operator1, operator2 } = dialogInfo;
         
-        const char1 = this.characters.get(operator1);
-        const char2 = this.characters.get(operator2);
+        const char1 = this.characters.get(this.toRendererCharacterId(operator1));
+        const char2 = this.characters.get(this.toRendererCharacterId(operator2));
         
         if (char1) {
-            this.saveAndPauseCharacter(operator1, char1);
+            this.saveAndPauseCharacter(this.toRendererCharacterId(operator1), char1);
         }
         
         if (char2) {
-            this.saveAndPauseCharacter(operator2, char2);
+            this.saveAndPauseCharacter(this.toRendererCharacterId(operator2), char2);
         }
     }
 
@@ -115,15 +115,15 @@ class DialogRendererIntegration {
     handleDialogEnd(dialogInfo) {
         const { operator1, operator2 } = dialogInfo;
         
-        const char1 = this.characters.get(operator1);
-        const char2 = this.characters.get(operator2);
+        const char1 = this.characters.get(this.toRendererCharacterId(operator1));
+        const char2 = this.characters.get(this.toRendererCharacterId(operator2));
         
         if (char1) {
-            this.restoreCharacter(operator1, char1);
+            this.restoreCharacter(this.toRendererCharacterId(operator1), char1);
         }
         
         if (char2) {
-            this.restoreCharacter(operator2, char2);
+            this.restoreCharacter(this.toRendererCharacterId(operator2), char2);
         }
     }
 
@@ -170,7 +170,7 @@ class DialogRendererIntegration {
     registerCharacter(characterId, characterInstance) {
         if (!this.isInitialized || !this.dialogSystem) return;
 
-        const id = characterId.toLowerCase();
+        const id = this.toRendererCharacterId(characterId);
         this.characters.set(id, characterInstance);
 
         const position = this.getCharacterPosition(characterInstance);
@@ -182,7 +182,7 @@ class DialogRendererIntegration {
     unregisterCharacter(characterId) {
         if (!this.isInitialized || !this.dialogSystem) return;
 
-        const id = characterId.toLowerCase();
+        const id = this.toRendererCharacterId(characterId);
         this.characters.delete(id);
         this.dialogSystem.unregisterOperator(id);
 
@@ -192,9 +192,14 @@ class DialogRendererIntegration {
     updateCharacterPosition(characterId, characterInstance) {
         if (!this.isInitialized || !this.dialogSystem) return;
 
-        const id = characterId.toLowerCase();
+        const id = this.toRendererCharacterId(characterId);
         const position = this.getCharacterPosition(characterInstance);
         this.dialogSystem.updateOperatorPosition(id, position);
+    }
+
+    toRendererCharacterId(characterId) {
+        const id = String(characterId || '').toLowerCase();
+        return id === 'kaltsit' ? 'kalts' : id;
     }
 
     getCharacterPosition(characterInstance) {
@@ -233,6 +238,11 @@ class DialogRendererIntegration {
             this.dialogSystem.stop();
         }
         console.log('[DialogRenderer] Dialog system stopped');
+    }
+
+    interruptForUserInteraction(reason = 'user-interaction') {
+        if (!this.dialogSystem) return;
+        this.dialogSystem.interruptCurrentDialog(reason);
     }
 
     enable() {

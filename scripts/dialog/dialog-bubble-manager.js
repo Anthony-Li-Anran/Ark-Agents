@@ -26,11 +26,20 @@ class DialogBubbleManager {
             pointerEvents: 'none'
         };
         this.activeBubbles = [];
+        this.operatorBubbleIds = new Map();
         this.listeners = new Map();
     }
 
     createBubble(operatorId, content, position) {
-        const bubbleId = `bubble_${operatorId}_${Date.now()}`;
+        const existingBubbleId = this.operatorBubbleIds.get(operatorId);
+        if (existingBubbleId && this.bubbles.has(existingBubbleId)) {
+            const existing = this.bubbles.get(existingBubbleId);
+            existing.position = position;
+            existing.content = content;
+            return existing;
+        }
+
+        const bubbleId = `bubble_${operatorId}`;
         
         if (!this.isBrowser) {
             const bubble = {
@@ -44,6 +53,7 @@ class DialogBubbleManager {
             };
             
             this.bubbles.set(bubbleId, bubble);
+            this.operatorBubbleIds.set(operatorId, bubbleId);
             return bubble;
         }
         
@@ -85,6 +95,7 @@ class DialogBubbleManager {
         };
         
         this.bubbles.set(bubbleId, bubble);
+        this.operatorBubbleIds.set(operatorId, bubbleId);
         
         return bubble;
     }
@@ -130,7 +141,17 @@ class DialogBubbleManager {
 
     hideBubble(bubbleId, immediate = false) {
         const bubble = this.bubbles.get(bubbleId);
-        if (!bubble || !bubble.isVisible) return;
+        if (!bubble) return;
+
+        this.stopTyping(bubble);
+
+        if (!bubble.isVisible) {
+            if (this.isBrowser && bubble.element) {
+                bubble.element.style.opacity = '0';
+                bubble.element.style.transform = 'scale(0.8)';
+            }
+            return;
+        }
 
         if (!this.isBrowser) {
             bubble.isVisible = false;
@@ -171,7 +192,7 @@ class DialogBubbleManager {
     }
 
     hideAllBubbles(immediate = false) {
-        for (const bubbleId of this.activeBubbles.slice()) {
+        for (const bubbleId of this.bubbles.keys()) {
             this.hideBubble(bubbleId, immediate);
         }
     }
@@ -198,16 +219,16 @@ class DialogBubbleManager {
         }
 
         if (bubble.isTyping) {
-            bubble.isTyping = false;
+            this.stopTyping(bubble);
         }
 
         bubble.isTyping = true;
         bubble.contentElement.textContent = '';
         
         let index = 0;
-        const typeInterval = setInterval(() => {
+        bubble.typingTimer = setInterval(() => {
             if (!bubble.isTyping || index >= text.length) {
-                clearInterval(typeInterval);
+                this.stopTyping(bubble);
                 bubble.isTyping = false;
                 this.emit('typingComplete', { bubbleId: bubble.id });
                 return;
@@ -216,6 +237,15 @@ class DialogBubbleManager {
             bubble.contentElement.textContent += text[index];
             index++;
         }, speed);
+    }
+
+    stopTyping(bubble) {
+        if (!bubble) return;
+        bubble.isTyping = false;
+        if (bubble.typingTimer) {
+            clearInterval(bubble.typingTimer);
+            bubble.typingTimer = null;
+        }
     }
 
     updateBubblePosition(bubbleId, position) {
@@ -237,6 +267,7 @@ class DialogBubbleManager {
         }
         
         this.bubbles.delete(bubbleId);
+        this.operatorBubbleIds.delete(bubble.operatorId);
         
         const index = this.activeBubbles.indexOf(bubbleId);
         if (index > -1) {
@@ -296,6 +327,7 @@ class DialogBubbleManager {
         
         this.bubbles.clear();
         this.activeBubbles = [];
+        this.operatorBubbleIds.clear();
         this.listeners.clear();
     }
 }

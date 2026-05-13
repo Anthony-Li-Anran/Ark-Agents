@@ -4,6 +4,7 @@
  */
 
 const path = require('path');
+const assert = require('assert');
 const { DialogSystem } = require('./scripts/dialog');
 
 async function testDialogSystem() {
@@ -52,7 +53,34 @@ async function testDialogSystem() {
         });
         console.log('   ✓ Content manager tested\n');
 
-        console.log('6. Cleaning up...');
+        console.log('6. Testing single bubble per operator...');
+        const bubble1 = dialogSystem.bubbleManager.createBubble('amiya', 'first', { x: 100, y: 100 });
+        const bubble2 = dialogSystem.bubbleManager.createBubble('amiya', 'second', { x: 200, y: 200 });
+        assert.strictEqual(bubble1.id, bubble2.id, 'A single operator must reuse one dialog bubble.');
+        assert.strictEqual(dialogSystem.bubbleManager.bubbles.size, 1, 'Only one bubble should exist for Amiya.');
+        dialogSystem.bubbleManager.hideAllBubbles(true);
+        console.log('   Single-bubble rule verified\n');
+
+        console.log('7. Testing dialog interruption...');
+        const dialogPair = dialogSystem.contentManager.getRandomDialogPair('amiya', 'kaltsit');
+        assert.ok(dialogPair, 'Expected Amiya/Kaltsit dialog pair.');
+        dialogSystem.stateManager.startDialog({
+            operator1: 'amiya',
+            operator2: 'kaltsit',
+            dialogPair
+        });
+        dialogSystem.handleDialogTriggered({
+            operator1: 'amiya',
+            operator2: 'kaltsit',
+            dialogPair
+        });
+        assert.strictEqual(dialogSystem.stateManager.isActive(), true, 'Dialog should be active before interruption.');
+        dialogSystem.interruptCurrentDialog('test-user-interaction');
+        assert.strictEqual(dialogSystem.stateManager.isActive(), false, 'Dialog should stop after user interruption.');
+        assert.strictEqual(dialogSystem.bubbleManager.getActiveBubbles().length, 0, 'Dialog bubbles should hide after interruption.');
+        console.log('   Dialog interruption verified\n');
+
+        console.log('8. Cleaning up...');
         dialogSystem.destroy();
         console.log('   ✓ System destroyed\n');
 

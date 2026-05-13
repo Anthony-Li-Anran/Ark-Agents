@@ -141,9 +141,8 @@ function getAvailableTexasSkins() {
 
 let chatInputWrapper = null;
 let exitChatBtn = null;
-let aiBubble = null;
-let aiBubbleHideTimer = null;
-let aiBubbleTargetId = null;
+let aiBubbles = new Map();
+let aiBubbleHideTimers = new Map();
 let aiLoadingSpinner = null;
 let messageInput = null;
 let sendButton = null;
@@ -280,6 +279,7 @@ function initDragHandler() {
         focusChatInput: () => messageInput?.focus(),
         onUpdateMouseIgnore: updateMouseIgnore,
         onDragStart: (id, char) => {
+            interruptAgentDialogForUser(`drag:${id}`);
             isUserInteracting = true;
             char.stopMoving();
             if (char.animationTimer) {
@@ -302,6 +302,7 @@ function initDragHandler() {
             }
         },
         onClick: (id, char) => {
+            interruptAgentDialogForUser(`click:${id}`);
             if (fileManagementMode && id === 'texas') {
                 showAIBubble('请将文件拖拽到我身上进行整理', false, 3000);
                 return;
@@ -327,6 +328,7 @@ function initDragHandler() {
         const { charId, character, bounds } = getCharacterAtPoint(e.clientX, e.clientY) || {};
         if (character && bounds) {
             e.preventDefault();
+            interruptAgentDialogForUser(`contextmenu:${charId}`);
             contextMenuTargetId = charId;
             hideContextMenu();
             showContextMenu(e.clientX, e.clientY, charId, bounds);
@@ -345,6 +347,7 @@ function initDragHandler() {
         if (!fileManagementMode) return;
         
         e.preventDefault();
+        interruptAgentDialogForUser('file-drop');
         
         const { charId } = getCharacterAtPoint(e.clientX, e.clientY) || {};
         if (charId !== 'texas') {
@@ -519,6 +522,12 @@ function hideContextMenu() {
             amiya?.scheduleNextAnimation(chatVisible);
         }
         contextMenuTargetId = null;
+    }
+}
+
+function interruptAgentDialogForUser(reason = 'user-interaction') {
+    if (dialogIntegration) {
+        dialogIntegration.interruptForUserInteraction(reason);
     }
 }
 
@@ -826,6 +835,7 @@ ipcRenderer.on('ai-setup-complete', () => {
 
 function showChatUI(playRelaxAnimation = true, showTakeoverMessage = false) {
     if (chatVisible) return;
+    interruptAgentDialogForUser('chat-open');
     chatVisible = true;
     isUserInteracting = true;
 
@@ -952,75 +962,106 @@ function hideChatUI() {
     }
 }
 
+function resolveAIBubbleTargetId(targetId = null) {
+    if (targetId) return targetId;
+    if (fileManagementMode && characters.texas) return 'texas';
+    return 'amiya';
+}
+
+function getOrCreateAIBubble(targetId) {
+    const id = resolveAIBubbleTargetId(targetId);
+    const existing = aiBubbles.get(id);
+    if (existing) return existing;
+
+    const element = document.createElement('div');
+    element.className = 'ai-bubble';
+    element.dataset.agentId = id;
+    document.body.appendChild(element);
+
+    const bubble = { id, element };
+    aiBubbles.set(id, bubble);
+    return bubble;
+}
+
+function clearAIBubbleTimer(targetId) {
+    const timer = aiBubbleHideTimers.get(targetId);
+    if (timer) {
+        clearTimeout(timer);
+        aiBubbleHideTimers.delete(targetId);
+    }
+}
+
 function showAIBubble(text, isError = false, autoHideMs = 0, targetId = null) {
-    if (!aiBubble) {
-        aiBubble = document.createElement('div');
-        aiBubble.className = 'ai-bubble';
-        document.body.appendChild(aiBubble);
-    }
-    aiBubbleTargetId = targetId;
+    const resolvedTargetId = resolveAIBubbleTargetId(targetId);
+    const bubble = getOrCreateAIBubble(resolvedTargetId);
+    const element = bubble.element;
 
-    if (aiBubbleHideTimer) {
-        clearTimeout(aiBubbleHideTimer);
-        aiBubbleHideTimer = null;
-    }
+    clearAIBubbleTimer(resolvedTargetId);
 
-    aiBubble.innerHTML = '';
+    element.innerHTML = '';
     const bubbleText = document.createElement('div');
     bubbleText.className = 'bubble-text';
     bubbleText.textContent = text;
-    aiBubble.appendChild(bubbleText);
-    aiBubble.classList.remove('loading', 'error');
+    element.appendChild(bubbleText);
+    element.classList.remove('loading', 'error');
     if (isError) {
-        aiBubble.classList.add('error');
+        element.classList.add('error');
     }
 
-    updateAIBubblePosition();
+    updateAIBubblePosition(resolvedTargetId);
 
     requestAnimationFrame(() => {
-        aiBubble.classList.add('visible');
+        element.classList.add('visible');
     });
 
     if (autoHideMs > 0) {
-        aiBubbleHideTimer = setTimeout(() => {
-            hideAIBubble();
-            aiBubbleHideTimer = null;
+        const timer = setTimeout(() => {
+            hideAIBubble(resolvedTargetId);
+            aiBubbleHideTimers.delete(resolvedTargetId);
         }, autoHideMs);
+        aiBubbleHideTimers.set(resolvedTargetId, timer);
     }
 }
 
-function hideAIBubble() {
-    if (aiBubbleHideTimer) {
-        clearTimeout(aiBubbleHideTimer);
-        aiBubbleHideTimer = null;
+function hideAIBubble(targetId = null) {
+    if (!targetId) {
+        for (const key of aiBubbles.keys()) {
+            hideAIBubble(key);
+        }
+        return;
     }
-    aiBubbleTargetId = null;
-    aiBubble?.classList.remove('visible');
+
+    const resolvedTargetId = resolveAIBubbleTargetId(targetId);
+    clearAIBubbleTimer(resolvedTargetId);
+    aiBubbles.get(resolvedTargetId)?.element.classList.remove('visible');
 }
 
-function updateAIBubblePosition() {
-    if (!aiBubble) return;
-
-    let targetChar = aiBubbleTargetId && characters[aiBubbleTargetId]
-        ? characters[aiBubbleTargetId]
-        : amiya;
-    if (!aiBubbleTargetId && fileManagementMode && characters.texas) {
-        targetChar = characters.texas;
+function updateAIBubblePosition(targetId = null) {
+    if (!targetId) {
+        for (const key of aiBubbles.keys()) {
+            updateAIBubblePosition(key);
+        }
+        return;
     }
+
+    const bubble = aiBubbles.get(targetId);
+    if (!bubble) return;
+
+    const targetChar = characters[targetId] || amiya;
     
     if (!targetChar) return;
 
     const bounds = targetChar.getBounds();
     if (!bounds) return;
 
-    const bubbleWidth = aiBubble.offsetWidth || 200;
-    const bubbleHeight = aiBubble.offsetHeight || 60;
+    const bubbleWidth = bubble.element.offsetWidth || 200;
+    const bubbleHeight = bubble.element.offsetHeight || 60;
 
     const left = bounds.x + bounds.width / 2 - bubbleWidth / 2;
     const top = bounds.y - bubbleHeight - 15;
 
-    aiBubble.style.left = `${Math.max(10, Math.min(screenWidth - bubbleWidth - 10, left))}px`;
-    aiBubble.style.top = `${Math.max(10, top)}px`;
+    bubble.element.style.left = `${Math.max(10, Math.min(screenWidth - bubbleWidth - 10, left))}px`;
+    bubble.element.style.top = `${Math.max(10, top)}px`;
 }
 
 function createLoadingSpinner() {

@@ -7,6 +7,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 
+const { AIToolRegistry } = require('./Amiya/src/modules/ai/ai-tools');
 const { KaltsitHealthAgent, SOURCE_TYPES } = require('./Kaltsit/src/modules/health/health-agent');
 
 function makeTempDir() {
@@ -43,6 +44,9 @@ function testSkills() {
     assert.ok(skillIds.includes('hydration-reminder'));
     assert.ok(skillIds.includes('mental-health-check'));
     assert.ok(skillIds.includes('privacy-guard'));
+    assert.ok(skillIds.includes('medical-web-search'));
+    assert.ok(skillIds.includes('nearby-hospital-search'));
+    assert.ok(skillIds.includes('medicine-prep-assist'));
     assert.ok(skills.every((skill) => skill.name && skill.description));
 
     const reminder = agent.runSkill('hydration-reminder', {
@@ -56,6 +60,27 @@ function testSkills() {
     const privacy = agent.runSkill('privacy-guard');
     assert.strictEqual(privacy.storeRawText, false);
     assert.ok(privacy.message.includes('\u9690\u79c1'));
+
+    const webSearch = agent.runSkill('medical-web-search', {
+        query: 'headache and fever'
+    });
+    assert.strictEqual(webSearch.success, true);
+    assert.ok(webSearch.searchUrl.includes('google.com/search'));
+    assert.ok(webSearch.message.includes('\u4e0d\u80fd\u66ff\u4ee3'));
+
+    const hospitalSearch = agent.runSkill('nearby-hospital-search', {
+        location: 'Seattle'
+    });
+    assert.strictEqual(hospitalSearch.success, true);
+    assert.ok(hospitalSearch.mapsUrl.includes('google.com/maps/search'));
+    assert.strictEqual(hospitalSearch.requiresLocation, false);
+
+    const medicinePrep = agent.runSkill('medicine-prep-assist', {
+        medicine: 'ibuprofen'
+    });
+    assert.strictEqual(medicinePrep.success, true);
+    assert.strictEqual(medicinePrep.canAutoPurchase, false);
+    assert.ok(medicinePrep.message.includes('\u4e0d\u4f1a\u81ea\u52a8\u4e0b\u5355'));
 }
 
 function testMentalHealthAnalysis() {
@@ -75,6 +100,27 @@ function testMentalHealthAnalysis() {
     assert.strictEqual(crisis.assessment.riskLevel, 'crisis');
     assert.ok(crisis.response.includes('\u7d27\u6025\u670d\u52a1'));
     assert.ok(responses.some((payload) => payload.severity === 'crisis'));
+}
+
+function testHealthToolRegistry() {
+    const { agent } = makeAgent();
+    const registry = new AIToolRegistry({
+        scheduleManager: {},
+        memoManager: {},
+        reminderManager: {},
+        healthAgent: agent
+    });
+
+    const prompt = registry.getToolPrompt();
+    assert.ok(prompt.includes('health.web.search'));
+    assert.ok(prompt.includes('health.hospital.search'));
+    assert.ok(prompt.includes('health.medicine.prepare'));
+
+    const result = registry.execute({
+        tool: 'health.medicine.prepare',
+        args: { medicine: 'acetaminophen' }
+    });
+    assert.strictEqual(result.canAutoPurchase, false);
 }
 
 function testBatchAndPrivacy() {
@@ -111,6 +157,7 @@ function main() {
     testSources();
     testSkills();
     testMentalHealthAnalysis();
+    testHealthToolRegistry();
     testBatchAndPrivacy();
     testDueReminders();
     console.log('Kaltsit health agent test passed.');

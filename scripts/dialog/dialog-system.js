@@ -26,6 +26,7 @@ class DialogSystem {
         this.operatorPositions = new Map();
         this.isInitialized = false;
         this.listeners = new Map();
+        this.pendingTimers = new Set();
 
         this.setupEventHandlers();
     }
@@ -72,6 +73,7 @@ class DialogSystem {
 
     stop() {
         this.scheduler.stop();
+        this.clearPendingTimers();
         this.bubbleManager.hideAllBubbles(true);
         this.stateManager.clear();
         console.log('[DialogSystem] Stopped');
@@ -116,7 +118,8 @@ class DialogSystem {
         if (!currentDialog) return;
 
         if (currentDialog.currentPhase === 'first') {
-            setTimeout(() => {
+            this.scheduleDialogStep(() => {
+                if (this.stateManager.getCurrentDialog() !== currentDialog) return;
                 this.stateManager.updateDialogPhase('second');
                 
                 this.showDialogBubble(
@@ -126,7 +129,8 @@ class DialogSystem {
                 );
             }, 500);
         } else if (currentDialog.currentPhase === 'second') {
-            setTimeout(() => {
+            this.scheduleDialogStep(() => {
+                if (this.stateManager.getCurrentDialog() !== currentDialog) return;
                 this.endCurrentDialog();
             }, 2000);
         }
@@ -161,7 +165,30 @@ class DialogSystem {
     }
 
     endCurrentDialog() {
+        this.clearPendingTimers();
         this.stateManager.endDialog();
+    }
+
+    interruptCurrentDialog(reason = 'user-interaction') {
+        this.clearPendingTimers();
+        this.bubbleManager.hideAllBubbles(true);
+        return this.stateManager.cancelDialog(reason);
+    }
+
+    scheduleDialogStep(callback, delayMs) {
+        const timer = setTimeout(() => {
+            this.pendingTimers.delete(timer);
+            callback();
+        }, delayMs);
+        this.pendingTimers.add(timer);
+        return timer;
+    }
+
+    clearPendingTimers() {
+        for (const timer of this.pendingTimers) {
+            clearTimeout(timer);
+        }
+        this.pendingTimers.clear();
     }
 
     addOperatorRelation(operator1, operator2, config = {}) {
@@ -229,6 +256,7 @@ class DialogSystem {
 
     destroy() {
         this.stop();
+        this.clearPendingTimers();
         this.bubbleManager.destroy();
         this.stateManager.reset();
         this.scheduler.reset();

@@ -113,6 +113,16 @@ function normalizeText(value) {
     return String(value || '').toLowerCase().replace(/\s+/g, ' ').trim();
 }
 
+function buildUrl(baseUrl, params) {
+    const url = new URL(baseUrl);
+    for (const [key, value] of Object.entries(params)) {
+        if (value !== undefined && value !== null && String(value).trim()) {
+            url.searchParams.set(key, String(value).trim());
+        }
+    }
+    return url.toString();
+}
+
 class KaltsitHealthAgent {
     constructor(appDataPath, options = {}) {
         this.appDataPath = appDataPath;
@@ -350,9 +360,64 @@ class KaltsitHealthAgent {
                         ? "Kal'tsit\uff1a\u6ce8\u610f\uff0c\u5f53\u524d\u914d\u7f6e\u4f1a\u4fdd\u5b58\u539f\u6587\u3002\u5982\u679c\u4e0d\u5fc5\u8981\uff0c\u5efa\u8bae\u5173\u95ed\u3002"
                         : "Kal'tsit\uff1a\u9690\u79c1\u5b88\u536b\u5df2\u542f\u7528\u3002\u9ed8\u8ba4\u4e0d\u4fdd\u5b58\u539f\u6587\uff0c\u53ea\u4fdd\u7559\u5fc5\u8981\u7684\u5065\u5eb7\u4fe1\u53f7\u3002"
                 };
+            case 'medical-web-search':
+                return this.buildMedicalWebSearch(input);
+            case 'nearby-hospital-search':
+                return this.buildNearbyHospitalSearch(input);
+            case 'medicine-prep-assist':
+                return this.buildMedicinePrepAssist(input);
             default:
                 throw new Error(`Unsupported health skill: ${skillId}`);
         }
+    }
+
+    buildMedicalWebSearch(input = {}) {
+        const query = String(input.query || input.symptom || input.message || '').trim();
+        const safeQuery = query || '\u5e38\u89c1\u5065\u5eb7\u95ee\u9898 \u4f55\u65f6\u5c31\u533b';
+        const searchUrl = buildUrl('https://www.google.com/search', {
+            q: `${safeQuery} medical advice when to see a doctor`
+        });
+        return {
+            skillId: 'medical-web-search',
+            success: true,
+            openUrl: searchUrl,
+            searchUrl,
+            message: "Kal'tsit\uff1a\u6211\u53ef\u4ee5\u4e3a\u4f60\u6253\u5f00\u8054\u7f51\u641c\u7d22\u5165\u53e3\u3002\u8bb0\u4f4f\uff0c\u7f51\u7edc\u4fe1\u606f\u53ea\u80fd\u4f5c\u4e3a\u53c2\u8003\uff0c\u4e0d\u80fd\u66ff\u4ee3\u533b\u751f\u8bca\u65ad\u3002\u5982\u679c\u51fa\u73b0\u80f8\u75db\u3001\u547c\u5438\u56f0\u96be\u3001\u610f\u8bc6\u6a21\u7cca\u3001\u4e25\u91cd\u8fc7\u654f\u6216\u81ea\u4f24\u98ce\u9669\uff0c\u8bf7\u7acb\u5373\u8054\u7cfb\u5f53\u5730\u7d27\u6025\u670d\u52a1\u3002"
+        };
+    }
+
+    buildNearbyHospitalSearch(input = {}) {
+        const location = String(input.location || input.city || '').trim();
+        const query = location
+            ? `hospital emergency room near ${location}`
+            : 'hospital emergency room near me';
+        const mapsUrl = buildUrl('https://www.google.com/maps/search/', { api: '1', query });
+        return {
+            skillId: 'nearby-hospital-search',
+            success: true,
+            openUrl: mapsUrl,
+            mapsUrl,
+            requiresLocation: !location,
+            message: location
+                ? "Kal'tsit\uff1a\u6211\u4f1a\u6253\u5f00\u9644\u8fd1\u533b\u9662\u641c\u7d22\u3002\u5982\u679c\u662f\u6025\u75c7\uff0c\u4e0d\u8981\u7b49\u5f85\u7ebf\u4e0a\u641c\u7d22\u7ed3\u679c\uff0c\u8bf7\u76f4\u63a5\u8054\u7cfb\u5f53\u5730\u7d27\u6025\u670d\u52a1\u3002"
+                : "Kal'tsit\uff1a\u6211\u4f1a\u6253\u5f00\u201c\u9644\u8fd1\u533b\u9662\u201d\u5730\u56fe\u641c\u7d22\u3002\u5982\u679c\u4f60\u613f\u610f\u63d0\u4f9b\u57ce\u5e02\u6216\u533a\u57df\uff0c\u7ed3\u679c\u4f1a\u66f4\u51c6\u786e\u3002\u6025\u75c7\u65f6\u8bf7\u4f18\u5148\u62e8\u6253\u5f53\u5730\u7d27\u6025\u7535\u8bdd\u3002"
+        };
+    }
+
+    buildMedicinePrepAssist(input = {}) {
+        const medicine = String(input.medicine || input.query || input.symptom || '').trim();
+        const query = medicine
+            ? `${medicine} pharmacy near me`
+            : 'pharmacy near me pharmacist consultation';
+        const pharmacyUrl = buildUrl('https://www.google.com/maps/search/', { api: '1', query });
+        return {
+            skillId: 'medicine-prep-assist',
+            success: true,
+            openUrl: pharmacyUrl,
+            pharmacyUrl,
+            canAutoPurchase: false,
+            message: "Kal'tsit\uff1a\u6211\u53ef\u4ee5\u5e2e\u4f60\u6253\u5f00\u836f\u5e97\u6216\u836f\u54c1\u641c\u7d22\u5165\u53e3\uff0c\u4f46\u4e0d\u4f1a\u81ea\u52a8\u4e0b\u5355\u6216\u4ee3\u4e70\u836f\u54c1\u3002\u5904\u65b9\u836f\u5fc5\u987b\u9075\u5faa\u533b\u5631\uff0c\u975e\u5904\u65b9\u836f\u4e5f\u5e94\u6838\u5bf9\u7981\u5fcc\u3001\u8fc7\u654f\u53f2\u548c\u836f\u7269\u76f8\u4e92\u4f5c\u7528\uff0c\u5fc5\u8981\u65f6\u8bf7\u54a8\u8be2\u836f\u5e08\u6216\u533b\u751f\u3002"
+        };
     }
 
     assessMentalHealth(text) {

@@ -75,12 +75,18 @@ function verifyHealthAgentWiring() {
     assert.match(renderer, /health-sources/, 'Renderer must expose Kaltsit health sources action.');
     assert.match(renderer, /health-skills/, 'Renderer must expose Kaltsit health skills action.');
     assert.match(renderer, /kaltsit-health-response/, 'Renderer must listen for Kaltsit health responses.');
+    assert.match(renderer, /let aiBubbles = new Map\(\)/, 'Renderer must maintain one AI bubble per agent.');
+    assert.match(renderer, /interruptAgentDialogForUser/, 'Renderer must interrupt agent dialogs during user interaction.');
+    assert.match(renderer, /dialogIntegration\.interruptForUserInteraction/, 'Renderer must route user interruption into dialog integration.');
 
     const healthSkills = readText('Kaltsit/src/modules/health/health-skills.js');
     assert.match(healthSkills, /sleep-supervision/, 'Health skills must include sleep supervision.');
     assert.match(healthSkills, /hydration-reminder/, 'Health skills must include hydration reminders.');
     assert.match(healthSkills, /mental-health-check/, 'Health skills must include mental health checks.');
     assert.match(healthSkills, /privacy-guard/, 'Health skills must include privacy guard.');
+    assert.match(healthSkills, /medical-web-search/, 'Health skills must include web search assistance.');
+    assert.match(healthSkills, /nearby-hospital-search/, 'Health skills must include nearby hospital search.');
+    assert.match(healthSkills, /medicine-prep-assist/, 'Health skills must include safe medicine preparation.');
 }
 
 async function verifyDialogSystem() {

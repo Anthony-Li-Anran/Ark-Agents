@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, screen, Tray, Menu, nativeImage } = require('electron');
+const { app, BrowserWindow, ipcMain, screen, Tray, Menu, nativeImage, shell } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const { AIConfigManager } = require('../Amiya/src/modules/ai/ai-config');
@@ -122,7 +122,10 @@ ipcMain.handle('health-record-action', (event, actionType) => {
 });
 
 ipcMain.handle('health-run-skill', (event, skillId, input = {}) => {
-    return getKaltsitHealthAgent().runSkill(skillId, input || {});
+    const payload = input || {};
+    const result = getKaltsitHealthAgent().runSkill(skillId, payload);
+    openHealthSkillUrl(result, payload);
+    return result;
 });
 
 ipcMain.handle('health-check-now', () => {
@@ -136,6 +139,22 @@ ipcMain.handle('health-check-now', () => {
             : "Kal'tsit\uff1a\u5f53\u524d\u6ca1\u6709\u7d27\u6025\u5065\u5eb7\u5e72\u9884\u3002\u53ef\u4ee5\u7ee7\u7eed\u5de5\u4f5c\uff0c\u4f46\u522b\u628a\u8fd9\u7406\u89e3\u6210\u53ef\u4ee5\u5ffd\u89c6\u7761\u7720\u3001\u996e\u6c34\u548c\u6d3b\u52a8\u3002"
     };
 });
+
+function openHealthSkillUrl(result, input = {}) {
+    if (!result || input.openExternal === false) return;
+
+    const urls = [];
+    if (result.openUrl) urls.push(result.openUrl);
+    if (Array.isArray(result.openUrls)) urls.push(...result.openUrls);
+
+    for (const url of urls) {
+        if (typeof url === 'string' && /^https:\/\//i.test(url)) {
+            shell.openExternal(url).catch((error) => {
+                console.warn('[KaltsitHealthAgent] Failed to open health assistance URL:', error.message);
+            });
+        }
+    }
+}
 
 // Open schedule (alias for todo)
 ipcMain.on('open-schedule', () => {
@@ -461,6 +480,7 @@ async function maybeExecuteAITool(config, rawResponse, history) {
     if (!toolCall) return null;
 
     const result = aiToolRegistry.execute(toolCall);
+    openHealthToolUrls(toolCall, result);
     const toolResult = {
         tool: toolCall.tool,
         args: toolCall.args || {},
@@ -482,6 +502,11 @@ async function maybeExecuteAITool(config, rawResponse, history) {
         toolResult,
         response: await callAI(config, followupPrompt, followupMessages)
     };
+}
+
+function openHealthToolUrls(toolCall, result) {
+    if (!toolCall || !String(toolCall.tool || '').startsWith('health.')) return;
+    openHealthSkillUrl(result, toolCall.args || {});
 }
 
 ipcMain.handle('ollama-generate', async (event, message, sessionId = 'default') => {
@@ -720,12 +745,18 @@ app.whenReady().then(() => {
     memoManager = new MemoManager(app.getPath('userData'));
     reminderManager = new ReminderManager(app.getPath('userData'));
     projectSkillPool = new ProjectSkillPool({ projectRoot: path.join(__dirname, '..') });
-    aiToolRegistry = new AIToolRegistry({ scheduleManager, memoManager, reminderManager, projectSkillPool });
     fileManager = new FileManager();
     kaltsitHealthAgent = new KaltsitHealthAgent(app.getPath('userData'), {
         onResponse: sendKaltsitHealthResponse
     });
     kaltsitHealthAgent.start();
+    aiToolRegistry = new AIToolRegistry({
+        scheduleManager,
+        memoManager,
+        reminderManager,
+        projectSkillPool,
+        healthAgent: kaltsitHealthAgent
+    });
     
     createMainWindow();
     createTray();

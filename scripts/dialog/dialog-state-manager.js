@@ -63,6 +63,24 @@ class DialogStateManager {
         console.log('[DialogStateManager] Dialog ended');
     }
 
+    cancelDialog(reason = 'cancelled') {
+        if (!this.currentDialog) return null;
+
+        this.currentDialog.endTime = Date.now();
+        this.currentDialog.status = 'interrupted';
+        this.currentDialog.reason = reason;
+        this.currentDialog.duration = this.currentDialog.endTime - this.currentDialog.startTime;
+
+        const interruptedDialog = { ...this.currentDialog };
+        this.currentDialog = null;
+        this.isDialogActive = false;
+
+        this.emit('dialogInterrupted', interruptedDialog);
+        this.emit('dialogEnded', interruptedDialog);
+        console.log(`[DialogStateManager] Dialog interrupted: ${reason}`);
+        return interruptedDialog;
+    }
+
     canStartDialog() {
         return !this.isDialogActive;
     }
@@ -124,7 +142,7 @@ class DialogStateManager {
 
     clear() {
         if (this.isDialogActive) {
-            this.endDialog();
+            this.cancelDialog('clear');
         }
         this.dialogQueue = [];
     }

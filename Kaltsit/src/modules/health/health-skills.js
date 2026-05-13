@@ -62,6 +62,27 @@ const HEALTH_SKILLS = [
         name: '\u9690\u79c1\u5b88\u536b',
         description: '\u9ed8\u8ba4\u4e0d\u4fdd\u5b58\u539f\u6587\uff0c\u53ea\u4fdd\u7559\u98ce\u9669\u7ea7\u522b\u3001\u4fe1\u53f7\u6458\u8981\u548c\u5fc5\u8981\u7684\u56de\u5e94\u8bb0\u5f55\u3002',
         settingPath: null
+    },
+    {
+        id: 'medical-web-search',
+        category: 'assist',
+        name: '\u8054\u7f51\u641c\u7d22\u89e3\u51b3\u65b9\u6cd5',
+        description: '\u5728\u7528\u6237\u660e\u786e\u8be2\u95ee\u65f6\u6253\u5f00\u533b\u7597\u4fe1\u606f\u641c\u7d22\u5165\u53e3\uff0c\u5e76\u63d0\u9192\u7f51\u7edc\u4fe1\u606f\u4e0d\u80fd\u66ff\u4ee3\u4e13\u4e1a\u8bca\u65ad\u3002',
+        settingPath: null
+    },
+    {
+        id: 'nearby-hospital-search',
+        category: 'assist',
+        name: '\u9644\u8fd1\u533b\u9662\u641c\u7d22',
+        description: '\u5728\u7528\u6237\u9700\u8981\u5c31\u533b\u65f6\u6253\u5f00\u5730\u56fe\u641c\u7d22\u5165\u53e3\uff0c\u4f18\u5148\u5f15\u5bfc\u6025\u75c7\u6216\u9644\u8fd1\u533b\u9662\u3002',
+        settingPath: null
+    },
+    {
+        id: 'medicine-prep-assist',
+        category: 'assist',
+        name: '\u8d2d\u836f\u51c6\u5907',
+        description: '\u5e2e\u7528\u6237\u6574\u7406\u836f\u54c1\u641c\u7d22\u5165\u53e3\u548c\u54a8\u8be2\u836f\u5e08\u63d0\u9192\uff0c\u4e0d\u4f1a\u81ea\u52a8\u4e0b\u5355\u6216\u4ee3\u4e70\u836f\u54c1\u3002',
+        settingPath: null
     }
 ];
 

@@ -14,16 +14,26 @@ const PROJECT_SKILL_TOOL_PROMPT = `
 - project.skills.recommend args {"projectType":"\u53ef\u9009","stage":"\u53ef\u9009","progress":0-100,"signals":["\u4fe1\u53f7"],"blockers":["\u963b\u585e"],"limit":6}
 `;
 
+const HEALTH_ASSIST_TOOL_PROMPT = `
+
+\u3010\u51ef\u5c14\u5e0c\u5065\u5eb7\u8f85\u52a9\u5de5\u5177\u3011
+\u53ea\u6709\u5f53\u7528\u6237\u660e\u786e\u8bf7\u6c42\u201c\u641c\u7d22\u89e3\u51b3\u65b9\u6cd5\u201d\u3001\u201c\u67e5\u9644\u8fd1\u533b\u9662\u201d\u3001\u201c\u67e5\u836f\u5e97/\u836f\u54c1\u201d\u65f6\u624d\u80fd\u8c03\u7528\u3002\u8fd9\u4e9b\u5de5\u5177\u53ea\u6253\u5f00\u641c\u7d22\u5165\u53e3\u6216\u8fd4\u56de\u5b89\u5168\u63d0\u9192\uff0c\u4e0d\u8bca\u65ad\uff0c\u4e0d\u81ea\u52a8\u4e0b\u5355\uff0c\u4e0d\u4ee3\u4e70\u836f\u54c1\u3002\u6025\u75c7\u6216\u81ea\u4f24\u98ce\u9669\u65f6\u5e94\u5f15\u5bfc\u8054\u7cfb\u5f53\u5730\u7d27\u6025\u670d\u52a1\u3002
+- health.web.search args {"query":"\u75c7\u72b6\u6216\u95ee\u9898"}
+- health.hospital.search args {"location":"\u53ef\u9009\u57ce\u5e02\u6216\u533a\u57df"}
+- health.medicine.prepare args {"medicine":"\u53ef\u9009\u836f\u54c1\u540d","symptom":"\u53ef\u9009\u75c7\u72b6"}
+`;
+
 class AIToolRegistry {
-    constructor({ scheduleManager, memoManager, reminderManager, projectSkillPool }) {
+    constructor({ scheduleManager, memoManager, reminderManager, projectSkillPool, healthAgent }) {
         this.scheduleManager = scheduleManager;
         this.memoManager = memoManager;
         this.reminderManager = reminderManager;
         this.projectSkillPool = projectSkillPool || new ProjectSkillPool();
+        this.healthAgent = healthAgent || null;
     }
 
     getToolPrompt() {
-        return PROJECT_SKILL_TOOL_PROMPT + `
+        return PROJECT_SKILL_TOOL_PROMPT + HEALTH_ASSIST_TOOL_PROMPT + `
 
 你可以通过调用本地工具来操作数据。格式：{"tool":"工具名","args":{...}}
 
@@ -176,9 +186,22 @@ class AIToolRegistry {
                 return this.projectSkillPool.analyzeProject(args);
             case 'project.skills.recommend':
                 return this.projectSkillPool.recommendSkills(args, { limit: args.limit });
+            case 'health.web.search':
+                return this.runHealthSkill('medical-web-search', args);
+            case 'health.hospital.search':
+                return this.runHealthSkill('nearby-hospital-search', args);
+            case 'health.medicine.prepare':
+                return this.runHealthSkill('medicine-prep-assist', args);
             default:
                 throw new Error(`Unknown tool: ${toolCall.tool}`);
         }
+    }
+
+    runHealthSkill(skillId, args) {
+        if (!this.healthAgent) {
+            throw new Error('Health agent is not available.');
+        }
+        return this.healthAgent.runSkill(skillId, args || {});
     }
 
     searchSchedule(query) {
