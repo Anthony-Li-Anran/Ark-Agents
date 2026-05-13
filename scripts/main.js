@@ -6,6 +6,7 @@ const { ScheduleManager } = require('../Amiya/src/modules/schedule/schedule-mana
 const { MemoManager } = require('../Amiya/src/modules/memo/memo-manager');
 const { ReminderManager } = require('../Amiya/src/modules/reminder/reminder-manager');
 const { AIToolRegistry } = require('../Amiya/src/modules/ai/ai-tools');
+const { ProjectSkillPool } = require('../Amiya/src/modules/project/project-skill-pool');
 const { FileManager } = require('../Texas/src/modules/file-manager');
 const { KaltsitHealthAgent } = require('../Kaltsit/src/modules/health/health-agent');
 
@@ -23,6 +24,7 @@ let scheduleManager = null;
 let memoManager = null;
 let reminderManager = null;
 let aiToolRegistry = null;
+let projectSkillPool = null;
 let fileManager = null;
 let kaltsitHealthAgent = null;
 
@@ -717,7 +719,8 @@ app.whenReady().then(() => {
     scheduleManager = new ScheduleManager(app.getPath('userData'));
     memoManager = new MemoManager(app.getPath('userData'));
     reminderManager = new ReminderManager(app.getPath('userData'));
-    aiToolRegistry = new AIToolRegistry({ scheduleManager, memoManager, reminderManager });
+    projectSkillPool = new ProjectSkillPool({ projectRoot: path.join(__dirname, '..') });
+    aiToolRegistry = new AIToolRegistry({ scheduleManager, memoManager, reminderManager, projectSkillPool });
     fileManager = new FileManager();
     kaltsitHealthAgent = new KaltsitHealthAgent(app.getPath('userData'), {
         onResponse: sendKaltsitHealthResponse

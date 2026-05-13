@@ -3,15 +3,27 @@
  * A small allowlist layer for chat-driven local actions.
  */
 
+const { ProjectSkillPool } = require('../project/project-skill-pool');
+
+const PROJECT_SKILL_TOOL_PROMPT = `
+
+\u3010\u9879\u76ee skills \u6c60\u3011
+\u8fd9\u4e9b\u5de5\u5177\u53ea\u8bfb\uff0c\u7528\u4e8e\u5206\u6790\u9879\u76ee\u5e76\u9009\u62e9\u9002\u5408\u5f53\u524d\u9636\u6bb5\u7684 skills\u3002\u5f53\u7528\u6237\u660e\u786e\u8bf4\u201c\u5206\u6790\u9879\u76ee\u201d\u3001\u201c\u63a8\u8350 skills\u201d\u3001\u201c\u9009\u62e9\u80fd\u529b\u201d\u6216\u201c\u7ef4\u62a4 skills \u6c60\u201d\u65f6\u53ef\u4ee5\u8c03\u7528\u3002
+- project.skills.list args {"projectType":"electron-desktop|frontend-app|node-app|game|unknown","stage":"discovery|setup|implementation|testing|release|maintenance|incident","category":"analysis|execution|verification|safety|orchestration|release|debugging"}
+- project.analyze args {"name":"\u9879\u76ee\u540d","projectType":"\u53ef\u9009","stage":"\u53ef\u9009","progress":0-100,"signals":["\u4fe1\u53f7"],"blockers":["\u963b\u585e"]}
+- project.skills.recommend args {"projectType":"\u53ef\u9009","stage":"\u53ef\u9009","progress":0-100,"signals":["\u4fe1\u53f7"],"blockers":["\u963b\u585e"],"limit":6}
+`;
+
 class AIToolRegistry {
-    constructor({ scheduleManager, memoManager, reminderManager }) {
+    constructor({ scheduleManager, memoManager, reminderManager, projectSkillPool }) {
         this.scheduleManager = scheduleManager;
         this.memoManager = memoManager;
         this.reminderManager = reminderManager;
+        this.projectSkillPool = projectSkillPool || new ProjectSkillPool();
     }
 
     getToolPrompt() {
-        return `
+        return PROJECT_SKILL_TOOL_PROMPT + `
 
 你可以通过调用本地工具来操作数据。格式：{"tool":"工具名","args":{...}}
 
@@ -158,6 +170,12 @@ class AIToolRegistry {
             case 'reminder.disable':
                 this.requireId(args);
                 return this.reminderManager.updateReminder(args.id, { enabled: false });
+            case 'project.skills.list':
+                return this.projectSkillPool.listSkills(args);
+            case 'project.analyze':
+                return this.projectSkillPool.analyzeProject(args);
+            case 'project.skills.recommend':
+                return this.projectSkillPool.recommendSkills(args, { limit: args.limit });
             default:
                 throw new Error(`Unknown tool: ${toolCall.tool}`);
         }
