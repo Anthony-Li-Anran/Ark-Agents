@@ -143,6 +143,7 @@ let chatInputWrapper = null;
 let exitChatBtn = null;
 let aiBubble = null;
 let aiBubbleHideTimer = null;
+let aiBubbleTargetId = null;
 let aiLoadingSpinner = null;
 let messageInput = null;
 let sendButton = null;
@@ -484,7 +485,14 @@ function showContextMenu(x, y, charId, bounds) {
     const customContent = charId === 'texas' ? buildTexasSkinSwitcher() : null;
     const menuItems = charId === 'texas'
         ? [{ id: 'file-management', label: 'File management' }, { id: 'exit', label: 'Exit' }]
-        : CONTEXT_MENU_ITEMS;
+        : charId === 'kalts'
+            ? [
+                { id: 'health-check', label: '\u5065\u5eb7\u68c0\u67e5' },
+                { id: 'health-sources', label: '\u5065\u5eb7\u6765\u6e90' },
+                { id: 'health-skills', label: '\u5065\u5eb7\u6280\u80fd' },
+                { id: 'exit', label: 'Exit' }
+            ]
+            : CONTEXT_MENU_ITEMS;
 
     contextMenu.show(menuX, menuY, {
         screenWidth,
@@ -522,6 +530,21 @@ async function onContextMenuAction(actionId) {
     if (actionId === 'file-management') {
         hideContextMenu();
         enterFileManagementMode();
+        return;
+    }
+    if (actionId === 'health-check') {
+        hideContextMenu();
+        await runKaltsitHealthCheck();
+        return;
+    }
+    if (actionId === 'health-sources') {
+        hideContextMenu();
+        await showKaltsitHealthSources();
+        return;
+    }
+    if (actionId === 'health-skills') {
+        hideContextMenu();
+        await showKaltsitHealthSkills();
         return;
     }
     if (actionId === 'chat') {
@@ -929,12 +952,13 @@ function hideChatUI() {
     }
 }
 
-function showAIBubble(text, isError = false, autoHideMs = 0) {
+function showAIBubble(text, isError = false, autoHideMs = 0, targetId = null) {
     if (!aiBubble) {
         aiBubble = document.createElement('div');
         aiBubble.className = 'ai-bubble';
         document.body.appendChild(aiBubble);
     }
+    aiBubbleTargetId = targetId;
 
     if (aiBubbleHideTimer) {
         clearTimeout(aiBubbleHideTimer);
@@ -970,14 +994,17 @@ function hideAIBubble() {
         clearTimeout(aiBubbleHideTimer);
         aiBubbleHideTimer = null;
     }
+    aiBubbleTargetId = null;
     aiBubble?.classList.remove('visible');
 }
 
 function updateAIBubblePosition() {
     if (!aiBubble) return;
 
-    let targetChar = amiya;
-    if (fileManagementMode && characters.texas) {
+    let targetChar = aiBubbleTargetId && characters[aiBubbleTargetId]
+        ? characters[aiBubbleTargetId]
+        : amiya;
+    if (!aiBubbleTargetId && fileManagementMode && characters.texas) {
         targetChar = characters.texas;
     }
     
@@ -1257,6 +1284,39 @@ function sendMessageToAI(message) {
     });
 }
 
+async function runKaltsitHealthCheck() {
+    try {
+        const result = await ipcRenderer.invoke('health-check-now');
+        showAIBubble(result.message, false, CHAT_BUBBLE_DURATION_MS, 'kalts');
+    } catch (error) {
+        showAIBubble(`Kal'tsit\uff1a\u5065\u5eb7\u68c0\u67e5\u5931\u8d25\uff1a${error.message}`, true, CHAT_BUBBLE_DURATION_MS, 'kalts');
+    }
+}
+
+async function showKaltsitHealthSources() {
+    try {
+        const sources = await ipcRenderer.invoke('health-get-sources');
+        const summary = sources
+            .map(source => `${source.type}: ${source.enabled ? '\u542f\u7528' : '\u505c\u7528'} / ${source.status}`)
+            .join('\n');
+        showAIBubble(`Kal'tsit\uff1a\u5065\u5eb7\u6765\u6e90\u72b6\u6001\uff1a\n${summary}`, false, CHAT_BUBBLE_DURATION_MS, 'kalts');
+    } catch (error) {
+        showAIBubble(`Kal'tsit\uff1a\u6765\u6e90\u5de1\u68c0\u5931\u8d25\uff1a${error.message}`, true, CHAT_BUBBLE_DURATION_MS, 'kalts');
+    }
+}
+
+async function showKaltsitHealthSkills() {
+    try {
+        const skills = await ipcRenderer.invoke('health-get-skills');
+        const summary = skills
+            .map(skill => `${skill.enabled ? '\u25cf' : '\u25cb'} ${skill.name}: ${skill.status}`)
+            .join('\n');
+        showAIBubble(`Kal'tsit\uff1a\u5df2\u63a5\u5165\u7684\u5065\u5eb7\u6280\u80fd\uff1a\n${summary}`, false, CHAT_BUBBLE_DURATION_MS, 'kalts');
+    } catch (error) {
+        showAIBubble(`Kal'tsit\uff1a\u5065\u5eb7\u6280\u80fd\u68c0\u67e5\u5931\u8d25\uff1a${error.message}`, true, CHAT_BUBBLE_DURATION_MS, 'kalts');
+    }
+}
+
 function enterFileManagementMode() {
     if (fileManagementMode) return;
     
@@ -1291,6 +1351,12 @@ document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape' && fileManagementMode) {
         exitFileManagementMode();
     }
+});
+
+ipcRenderer.on('kaltsit-health-response', (event, payload) => {
+    const message = payload && payload.message ? payload.message : "Kal'tsit\uff1a\u5065\u5eb7\u72b6\u6001\u5df2\u66f4\u65b0\u3002";
+    const isError = payload && (payload.severity === 'high' || payload.severity === 'crisis');
+    showAIBubble(message, isError, CHAT_BUBBLE_DURATION_MS, characters.kalts ? 'kalts' : null);
 });
 
 document.addEventListener('DOMContentLoaded', () => {

@@ -7,6 +7,7 @@ const { MemoManager } = require('../Amiya/src/modules/memo/memo-manager');
 const { ReminderManager } = require('../Amiya/src/modules/reminder/reminder-manager');
 const { AIToolRegistry } = require('../Amiya/src/modules/ai/ai-tools');
 const { FileManager } = require('../Texas/src/modules/file-manager');
+const { KaltsitHealthAgent } = require('../Kaltsit/src/modules/health/health-agent');
 
 process.env['ELECTRON_DISABLE_SECURITY_WARNINGS'] = 'true';
 
@@ -23,6 +24,7 @@ let memoManager = null;
 let reminderManager = null;
 let aiToolRegistry = null;
 let fileManager = null;
+let kaltsitHealthAgent = null;
 
 // Base paths
 const AMIVA_SRC_PATH = path.join(__dirname, '../Amiya/src');
@@ -70,6 +72,67 @@ ipcMain.handle('check-ollama', async () => {
 // Mark AI as connected
 ipcMain.on('ai-mark-connected', () => {
     console.log('AI marked as connected');
+});
+
+function sendKaltsitHealthResponse(payload) {
+    if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send('kaltsit-health-response', payload);
+    }
+}
+
+function getKaltsitHealthAgent() {
+    if (!kaltsitHealthAgent) {
+        throw new Error('Kaltsit health agent is not initialized.');
+    }
+    return kaltsitHealthAgent;
+}
+
+ipcMain.handle('health-get-status', () => {
+    return getKaltsitHealthAgent().getStatus();
+});
+
+ipcMain.handle('health-get-sources', () => {
+    return getKaltsitHealthAgent().getSources();
+});
+
+ipcMain.handle('health-get-skills', () => {
+    return getKaltsitHealthAgent().getSkills();
+});
+
+ipcMain.handle('health-update-settings', (event, updates) => {
+    return getKaltsitHealthAgent().updateSettings(updates || {});
+});
+
+ipcMain.handle('health-connect-source', (event, sourceType, metadata = {}) => {
+    return getKaltsitHealthAgent().connectSource(sourceType, metadata);
+});
+
+ipcMain.handle('health-analyze-message', (event, message) => {
+    return getKaltsitHealthAgent().analyzeMessage(message || {});
+});
+
+ipcMain.handle('health-analyze-batch', (event, messages) => {
+    return getKaltsitHealthAgent().analyzeBatch(Array.isArray(messages) ? messages : []);
+});
+
+ipcMain.handle('health-record-action', (event, actionType) => {
+    return getKaltsitHealthAgent().recordAction(actionType);
+});
+
+ipcMain.handle('health-run-skill', (event, skillId, input = {}) => {
+    return getKaltsitHealthAgent().runSkill(skillId, input || {});
+});
+
+ipcMain.handle('health-check-now', () => {
+    const agent = getKaltsitHealthAgent();
+    const due = agent.checkDueReminders();
+    return {
+        status: agent.getStatus(),
+        due,
+        message: due.length > 0
+            ? due[0].message
+            : "Kal'tsit\uff1a\u5f53\u524d\u6ca1\u6709\u7d27\u6025\u5065\u5eb7\u5e72\u9884\u3002\u53ef\u4ee5\u7ee7\u7eed\u5de5\u4f5c\uff0c\u4f46\u522b\u628a\u8fd9\u7406\u89e3\u6210\u53ef\u4ee5\u5ffd\u89c6\u7761\u7720\u3001\u996e\u6c34\u548c\u6d3b\u52a8\u3002"
+    };
 });
 
 // Open schedule (alias for todo)
@@ -426,6 +489,18 @@ ipcMain.handle('ollama-generate', async (event, message, sessionId = 'default') 
         let history = conversationHistory.get(sessionId) || [];
         history.push({ role: 'user', content: message });
 
+        if (kaltsitHealthAgent) {
+            try {
+                kaltsitHealthAgent.analyzeMessage({
+                    source: 'app-chat',
+                    text: message,
+                    timestamp: new Date().toISOString()
+                });
+            } catch (healthError) {
+                console.warn('[KaltsitHealthAgent] Failed to analyze app chat:', healthError.message);
+            }
+        }
+
         const prompt = buildToolChatPrompt(history, true);
         const rawToolAwareResponse = await callAI(config, prompt);
         const toolExecution = await maybeExecuteAITool(config, rawToolAwareResponse, history);
@@ -644,6 +719,10 @@ app.whenReady().then(() => {
     reminderManager = new ReminderManager(app.getPath('userData'));
     aiToolRegistry = new AIToolRegistry({ scheduleManager, memoManager, reminderManager });
     fileManager = new FileManager();
+    kaltsitHealthAgent = new KaltsitHealthAgent(app.getPath('userData'), {
+        onResponse: sendKaltsitHealthResponse
+    });
+    kaltsitHealthAgent.start();
     
     createMainWindow();
     createTray();
