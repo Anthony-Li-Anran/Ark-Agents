@@ -91,13 +91,19 @@ const CHARACTER_CONFIGS = {
     }
 };
 
-// Context menu items
+// Context menu items for Amiya
 const CONTEXT_MENU_ITEMS = [
     { id: 'chat', label: 'Chat' },
     { id: 'schedule', label: 'Schedule' },
     { id: 'memo', label: 'Memo' },
     { id: 'reminder', label: 'Reminder' },
     { id: 'operators', label: 'Operators' },
+    { id: 'exit', label: 'Exit' }
+];
+
+// Context menu items for Kaltsit (medical consultation)
+const KALTSIT_CONTEXT_MENU_ITEMS = [
+    { id: 'medical-consult', label: 'Medical Consult' },
     { id: 'exit', label: 'Exit' }
 ];
 
@@ -119,5 +125,6 @@ module.exports = {
     TEXAS_SLEEP_ANIMATIONS,
     TEXAS_ANIMATIONS,
     CHARACTER_CONFIGS,
-    CONTEXT_MENU_ITEMS
+    CONTEXT_MENU_ITEMS,
+    KALTSIT_CONTEXT_MENU_ITEMS
 };

@@ -43,6 +43,7 @@ const {
     GREETING_BUBBLE_DURATION_MS,
     CHAT_BUBBLE_DURATION_MS,
     CONTEXT_MENU_ITEMS,
+    KALTSIT_CONTEXT_MENU_ITEMS,
     CHARACTER_CONFIGS,
     MODEL_NAMES
 } = require(path.join(scriptDir, '..', 'shared', 'constants'));
@@ -66,6 +67,8 @@ let startupGreetingShown = false;
 let chatVisible = false;
 let isUserInteracting = false;
 let pendingChatAfterSetup = false;
+let kaltsitChatVisible = false;
+let kaltsitChatTarget = null;
 let chatActivationInProgress = false;
 let contextMenuTargetId = null;
 let texasSkin = 'default';
@@ -233,7 +236,7 @@ function initDragHandler() {
     const dragHandler = new DragHandler({
         getCharacter: (id) => characters[id],
         getCharacters: () => Object.values(characters).filter(c => c && c.isEnabled),
-        chatVisible: () => chatVisible,
+        chatVisible: () => chatVisible || kaltsitChatVisible,
         focusChatInput: () => messageInput?.focus(),
         onUpdateMouseIgnore: updateMouseIgnore,
         onDragStart: (id, char) => {
@@ -243,16 +246,18 @@ function initDragHandler() {
                 clearTimeout(char.animationTimer);
                 char.animationTimer = null;
             }
-            char.playAnimation(chatVisible ? 'Relax' : getDefaultIdleAnimation(), true);
+            const inChat = chatVisible || kaltsitChatVisible;
+            char.playAnimation(inChat ? 'Relax' : getDefaultIdleAnimation(), true);
         },
         onDragMove: (id, char) => {
             updateChatPosition();
         },
         onDragEnd: (id, char) => {
-            if (!chatVisible) {
+            const inChat = chatVisible || kaltsitChatVisible;
+            if (!inChat) {
                 char.playAnimation(getDefaultIdleAnimation(), true);
                 isUserInteracting = false;
-                char.scheduleNextAnimation(chatVisible);
+                char.scheduleNextAnimation(false);
             }
         },
         onClick: (id, char) => {
@@ -262,16 +267,20 @@ function initDragHandler() {
             }
             if (chatVisible && id === 'amiya') {
                 messageInput?.focus();
-            } else {
-                char.stopMoving();
-                if (char.animationTimer) {
-                    clearTimeout(char.animationTimer);
-                    char.animationTimer = null;
-                }
-                char.playInteract(() => {
-                    char.scheduleNextAnimation(chatVisible);
-                });
+                return;
             }
+            if (kaltsitChatVisible && id === 'kalts') {
+                messageInput?.focus();
+                return;
+            }
+            char.stopMoving();
+            if (char.animationTimer) {
+                clearTimeout(char.animationTimer);
+                char.animationTimer = null;
+            }
+            char.playInteract(() => {
+                char.scheduleNextAnimation(chatVisible || kaltsitChatVisible);
+            });
         }
     });
 
@@ -386,7 +395,7 @@ function initDragHandler() {
 
 function updateMouseIgnore(x, y) {
     if (!amiya) return;
-    if (chatVisible || contextMenuVisible) {
+    if (chatVisible || kaltsitChatVisible || contextMenuVisible) {
         ipcRenderer.send('set-ignore-mouse-events', false);
         return;
     }
@@ -400,10 +409,10 @@ function updateMouseIgnore(x, y) {
 }
 
 function showStartupGreeting() {
-    if (startupGreetingShown || chatVisible) return;
+    if (startupGreetingShown || chatVisible || kaltsitChatVisible) return;
     startupGreetingShown = true;
     setTimeout(() => {
-        if (!chatVisible && amiya) {
+        if (!chatVisible && !kaltsitChatVisible && amiya) {
             showAIBubble(getTimeGreeting(), false, GREETING_BUBBLE_DURATION_MS);
         }
     }, 700);
@@ -437,9 +446,14 @@ function showContextMenu(x, y, charId, bounds) {
     const menuX = bounds.x + bounds.width + 10;
     const menuY = bounds.y + bounds.height / 2 - 100;
     const customContent = charId === 'texas' ? buildTexasSkinSwitcher() : null;
-    const menuItems = charId === 'texas'
-        ? [{ id: 'file-management', label: 'File management' }, { id: 'exit', label: 'Exit' }]
-        : CONTEXT_MENU_ITEMS;
+    let menuItems;
+    if (charId === 'texas') {
+        menuItems = [{ id: 'file-management', label: 'File management' }, { id: 'exit', label: 'Exit' }];
+    } else if (charId === 'kalts') {
+        menuItems = KALTSIT_CONTEXT_MENU_ITEMS;
+    } else {
+        menuItems = CONTEXT_MENU_ITEMS;
+    }
 
     contextMenu.show(menuX, menuY, {
         screenWidth,
@@ -461,9 +475,9 @@ function hideContextMenu() {
         contextMenuInteraction = false;
         isUserInteracting = false;
         if (contextMenuTargetId && characters[contextMenuTargetId]) {
-            characters[contextMenuTargetId].scheduleNextAnimation(chatVisible);
+            characters[contextMenuTargetId].scheduleNextAnimation(chatVisible || kaltsitChatVisible);
         } else {
-            amiya?.scheduleNextAnimation(chatVisible);
+            amiya?.scheduleNextAnimation(chatVisible || kaltsitChatVisible);
         }
         contextMenuTargetId = null;
     }
@@ -477,6 +491,11 @@ async function onContextMenuAction(actionId) {
     if (actionId === 'file-management') {
         hideContextMenu();
         enterFileManagementMode();
+        return;
+    }
+    if (actionId === 'medical-consult') {
+        await enterKaltsitChat();
+        hideContextMenu();
         return;
     }
     if (actionId === 'chat') {
@@ -847,6 +866,10 @@ function updateNotificationPosition() {
 }
 
 function hideChatUI() {
+    if (kaltsitChatVisible) {
+        hideKaltsitChatUI();
+        return;
+    }
     if (!chatVisible) return;
     chatVisible = false;
     isUserInteracting = false;
@@ -861,7 +884,7 @@ function hideChatUI() {
 
     if (amiya) {
         amiya.playAnimation(getDefaultIdleAnimation(), true);
-        amiya.scheduleNextAnimation(chatVisible);
+        amiya.scheduleNextAnimation(false);
     }
 }
 
@@ -915,6 +938,8 @@ function updateAIBubblePosition() {
     let targetChar = amiya;
     if (fileManagementMode && characters.texas) {
         targetChar = characters.texas;
+    } else if (kaltsitChatVisible && characters.kalts) {
+        targetChar = characters.kalts;
     }
     
     if (!targetChar) return;
@@ -956,9 +981,18 @@ function hideLoadingSpinner() {
 }
 
 function updateLoadingSpinnerPosition() {
-    if (!aiLoadingSpinner || !amiya) return;
+    if (!aiLoadingSpinner) return;
 
-    const bounds = amiya.getBounds();
+    let targetChar = amiya;
+    if (fileManagementMode && characters.texas) {
+        targetChar = characters.texas;
+    } else if (kaltsitChatVisible && characters.kalts) {
+        targetChar = characters.kalts;
+    }
+    
+    if (!targetChar) return;
+
+    const bounds = targetChar.getBounds();
     if (!bounds) return;
 
     const spinnerSize = 28;
@@ -1024,6 +1058,11 @@ function createChatUI() {
 }
 
 function updateChatPosition() {
+    if (kaltsitChatVisible && characters.kalts) {
+        updateKaltsitChatPosition();
+        return;
+    }
+    
     if (!chatVisible || !amiya) return;
 
     const bounds = amiya.getBounds();
@@ -1174,7 +1213,12 @@ function sendUserMessage() {
     if (!message) return;
 
     messageInput.value = '';
-    sendMessageToAI(message);
+    
+    if (kaltsitChatVisible && kaltsitChatTarget === 'kalts') {
+        sendKaltsitMessage(message);
+    } else {
+        sendMessageToAI(message);
+    }
 }
 
 function sendMessageToAI(message) {
@@ -1219,7 +1263,7 @@ function exitFileManagementMode() {
     showAIBubble('已退出整理模式', false, 2000);
     
     if (characters.texas) {
-        characters.texas.scheduleNextAnimation(chatVisible);
+        characters.texas.scheduleNextAnimation(chatVisible || kaltsitChatVisible);
     }
 }
 
@@ -1228,6 +1272,112 @@ document.addEventListener('keydown', (e) => {
         exitFileManagementMode();
     }
 });
+
+async function enterKaltsitChat() {
+    if (kaltsitChatVisible) return;
+    
+    const configResult = await ipcRenderer.invoke('ai-get-config');
+    if (configResult.isFirstRun || !configResult.isConfigured || !configResult.model) {
+        showAIBubble('请先配置 AI 服务', true, 3000);
+        ipcRenderer.send('show-setup-window');
+        return;
+    }
+    
+    kaltsitChatVisible = true;
+    kaltsitChatTarget = 'kalts';
+    isUserInteracting = true;
+    
+    if (characters.kalts) {
+        characters.kalts.stopMoving();
+        if (characters.kalts.animationTimer) {
+            clearTimeout(characters.kalts.animationTimer);
+            characters.kalts.animationTimer = null;
+        }
+        characters.kalts.playAnimation('Relax', true);
+    }
+    
+    if (!chatInputWrapper) {
+        createChatUI();
+    }
+    
+    chatInputWrapper.classList.add('visible');
+    exitChatBtn.classList.add('visible');
+    updateKaltsitChatPosition();
+    ipcRenderer.send('set-ignore-mouse-events', false);
+    messageInput?.focus();
+    
+    showAIBubble('博士，有什么医疗问题需要咨询吗？', false, 3000);
+}
+
+function hideKaltsitChatUI() {
+    if (!kaltsitChatVisible) return;
+    
+    kaltsitChatVisible = false;
+    kaltsitChatTarget = null;
+    isUserInteracting = false;
+    
+    chatInputWrapper?.classList.remove('visible');
+    hideAIBubble();
+    hideLoadingSpinner();
+    
+    ipcRenderer.invoke('medical-clear-conversation').catch(() => {});
+    ipcRenderer.send('set-ignore-mouse-events', true);
+    
+    if (characters.kalts) {
+        characters.kalts.playAnimation(getDefaultIdleAnimation(), true);
+        characters.kalts.scheduleNextAnimation(false);
+    }
+}
+
+function updateKaltsitChatPosition() {
+    if (!kaltsitChatVisible || !characters.kalts) return;
+    
+    const bounds = characters.kalts.getBounds();
+    if (!bounds) return;
+    
+    if (chatInputWrapper) {
+        const inputWidth = chatInputWrapper.offsetWidth || 310;
+        const left = bounds.x + bounds.width / 2 - inputWidth / 2;
+        const top = bounds.y + bounds.height + 15;
+        
+        chatInputWrapper.style.left = `${Math.max(10, Math.min(screenWidth - inputWidth - 10, left))}px`;
+        chatInputWrapper.style.top = `${Math.min(screenHeight - 60, top)}px`;
+    }
+    
+    updateAIBubblePosition();
+    updateLoadingSpinnerPosition();
+}
+
+async function sendKaltsitMessage(message) {
+    showLoadingSpinner();
+    
+    try {
+        const isMedical = await ipcRenderer.invoke('medical-check-question', message);
+        let context = '';
+        
+        if (isMedical.isMedical) {
+            const networkStatus = await ipcRenderer.invoke('medical-check-network');
+            if (networkStatus.available) {
+                const searchResult = await ipcRenderer.invoke('medical-search', message);
+                if (searchResult.success && searchResult.results && searchResult.results.length > 0) {
+                    context = searchResult.results.map(r => r.snippet).join('\n');
+                }
+            }
+        }
+        
+        const result = await ipcRenderer.invoke('medical-chat', message, context);
+        hideLoadingSpinner();
+        
+        if (result.success) {
+            showAIBubble(result.response, false, CHAT_BUBBLE_DURATION_MS);
+        } else {
+            showAIBubble('抱歉，服务暂时不可用：' + result.error, true, CHAT_BUBBLE_DURATION_MS);
+        }
+    } catch (error) {
+        hideLoadingSpinner();
+        showAIBubble('抱歉，发生了错误：' + error.message, true, CHAT_BUBBLE_DURATION_MS);
+    }
+}
 
 document.addEventListener('DOMContentLoaded', () => {
     initCSS();

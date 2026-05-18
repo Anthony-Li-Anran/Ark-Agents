@@ -7,6 +7,9 @@ const { MemoManager } = require('../Amiya/src/modules/memo/memo-manager');
 const { ReminderManager } = require('../Amiya/src/modules/reminder/reminder-manager');
 const { AIToolRegistry } = require('../Amiya/src/modules/ai/ai-tools');
 const { FileManager } = require('../Texas/src/modules/file-manager');
+const { MedicalConfigManager } = require('../Kaltsit/src/modules/medical/medical-config');
+const { MedicalLogger } = require('../Kaltsit/src/modules/medical/medical-logger');
+const { MedicalTools } = require('../Kaltsit/src/modules/medical/medical-tools');
 
 process.env['ELECTRON_DISABLE_SECURITY_WARNINGS'] = 'true';
 
@@ -23,6 +26,10 @@ let memoManager = null;
 let reminderManager = null;
 let aiToolRegistry = null;
 let fileManager = null;
+let medicalConfigManager = null;
+let medicalLogger = null;
+let medicalTools = null;
+let kaltsitConversationHistory = new Map();
 
 // Base paths
 const AMIVA_SRC_PATH = path.join(__dirname, '../Amiya/src');
@@ -32,8 +39,10 @@ const MODULES_PATH = path.join(AMIVA_SRC_PATH, 'modules');
 const VIEWS_PATH = path.join(AMIVA_SRC_PATH, 'views');
 const CONFIG_PATH = path.join(AMIVA_PATH, 'config');
 const MODELS_PATH = path.join(__dirname, '../Models');
+const KALTSIT_PATH = path.join(__dirname, '../Kaltsit');
+const KALTSIT_CONFIG_PATH = path.join(KALTSIT_PATH, 'config');
 
-// Load system prompt
+// Load system prompt for Amiya
 let systemPrompt = '';
 let greetingMessage = '欢迎回家，博士。';
 try {
@@ -43,6 +52,39 @@ try {
     greetingMessage = promptData.greeting || greetingMessage;
 } catch (error) {
     console.warn('Failed to load system prompt:', error);
+}
+
+// Load Kaltsit medical system prompt
+let kaltsitSystemConfig = null;
+try {
+    const kaltsitPromptPath = path.join(KALTSIT_CONFIG_PATH, 'system_prompt.json');
+    kaltsitSystemConfig = JSON.parse(fs.readFileSync(kaltsitPromptPath, 'utf-8'));
+    console.log('[Kaltsit] Medical system config loaded successfully');
+} catch (error) {
+    console.warn('Failed to load Kaltsit system prompt:', error);
+    kaltsitSystemConfig = null;
+}
+
+function buildKaltsitSystemPrompt() {
+    if (!kaltsitSystemConfig) {
+        throw new Error('凯尔希医疗配置未加载');
+    }
+    
+    if (kaltsitSystemConfig.system_prompt) {
+        return kaltsitSystemConfig.system_prompt;
+    }
+    
+    return `你是凯尔希，一位专业的医疗咨询顾问。请像真正的医生一样回答患者的问题。
+
+语气：冷静、理性、专业
+
+回答要求：
+1. 像面对面问诊一样自然交流
+2. 必要时询问症状细节
+3. 给出实用的建议
+4. 回答末尾加上："以上建议仅供参考，如有不适请及时就医。"
+
+请直接回答患者的问题，不要输出对话示例。`;
 }
 
 ipcMain.on('set-ignore-mouse-events', (event, ignore) => {
@@ -449,6 +491,90 @@ ipcMain.handle('ollama-generate', async (event, message, sessionId = 'default') 
     }
 });
 
+// === Kaltsit Medical Consultation IPC Handlers ===
+
+ipcMain.handle('medical-check-question', async (event, question) => {
+    try {
+        const result = medicalTools.isMedicalQuestion(question);
+        return { isMedical: result, keywords: medicalTools.getMatchedKeywords(question) };
+    } catch (error) {
+        return { isMedical: false, error: error.message };
+    }
+});
+
+ipcMain.handle('medical-check-network', async () => {
+    try {
+        const status = await medicalTools.checkNetworkStatus();
+        return status;
+    } catch (error) {
+        return { available: false, error: error.message };
+    }
+});
+
+ipcMain.handle('medical-search', async (event, query) => {
+    try {
+        medicalLogger.logNetworkQuery('web-search', 'started', 0, null);
+        const startTime = Date.now();
+        
+        const result = await medicalTools.searchMedicalInfo(query);
+        
+        const responseTime = Date.now() - startTime;
+        medicalLogger.logNetworkQuery('web-search', 'completed', responseTime, null);
+        
+        return result;
+    } catch (error) {
+        medicalLogger.logNetworkQuery('web-search', 'failed', 0, error.message);
+        return { success: false, error: error.message };
+    }
+});
+
+ipcMain.handle('medical-chat', async (event, message, context = '') => {
+    try {
+        const config = getAIConfig();
+        
+        medicalLogger.logUserQuestion(message);
+        const startTime = Date.now();
+        
+        let history = kaltsitConversationHistory.get('kaltsit') || [];
+        
+        let prompt = buildKaltsitSystemPrompt();
+        if (context) {
+            prompt += `\n\n【参考资料】\n${context}`;
+        }
+        
+        prompt += '\n\n【对话历史】\n';
+        if (history.length > 0) {
+            for (const msg of history) {
+                prompt += `${msg.role === 'user' ? '博士' : '凯尔希'}: ${msg.content}\n`;
+            }
+        }
+        
+        prompt += `\n博士: ${message}\n凯尔希:`;
+        
+        const response = await callAI(config, prompt);
+        
+        history.push({ role: 'user', content: message });
+        history.push({ role: 'assistant', content: response });
+        
+        if (history.length > 20) {
+            history = history.slice(-20);
+        }
+        kaltsitConversationHistory.set('kaltsit', history);
+        
+        const responseTime = Date.now() - startTime;
+        medicalLogger.logModelResponse(response, responseTime);
+        
+        return { success: true, response: response };
+    } catch (error) {
+        return { success: false, error: error.message };
+    }
+});
+
+ipcMain.handle('medical-clear-conversation', async () => {
+    kaltsitConversationHistory.delete('kaltsit');
+    return { success: true };
+});
+
 // Get greeting message
 ipcMain.handle('get-greeting', async () => {
     return { success: true, greeting: greetingMessage };
@@ -644,6 +770,8 @@ app.whenReady().then(() => {
     reminderManager = new ReminderManager(app.getPath('userData'));
     aiToolRegistry = new AIToolRegistry({ scheduleManager, memoManager, reminderManager });
     fileManager = new FileManager();
+    medicalLogger = new MedicalLogger();
+    medicalTools = new MedicalTools();
     
     createMainWindow();
     createTray();
