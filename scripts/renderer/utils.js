@@ -40,6 +40,8 @@ let callbacks = {
     updateChatPosition: null,
     isChatVisible: null,
     isContextMenuVisible: null,
+    isSubmenuVisible: null,
+    getSubmenuElement: null,
     isUserInteracting: null,
     setUserInteracting: null,
     isTexasUserInteracting: null,
@@ -258,7 +260,10 @@ function initDrag() {
         if (callbacks.isContextMenuVisible && callbacks.isContextMenuVisible() &&
             callbacks.getContextMenuElement) {
             const contextMenu = callbacks.getContextMenuElement();
-            if (contextMenu && !contextMenu.contains(e.target)) {
+            const inMainMenu = contextMenu && contextMenu.contains(e.target);
+            const inSubmenu = callbacks.isSubmenuVisible && callbacks.isSubmenuVisible() &&
+                callbacks.getSubmenuElement && callbacks.getSubmenuElement().contains(e.target);
+            if (!inMainMenu && !inSubmenu) {
                 if (callbacks.hideContextMenu) callbacks.hideContextMenu();
             }
         }

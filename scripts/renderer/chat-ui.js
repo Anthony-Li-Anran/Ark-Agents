@@ -770,6 +770,101 @@ function getStyles() {
 .my-form input[type="checkbox"]:checked::after {
   opacity: 1;
 }
+
+/* Selection Button */
+.selection-button {
+  position: absolute;
+  padding: 6px 12px;
+  background: hsl(200 80% 50%);
+  color: white;
+  border: none;
+  border-radius: 16px;
+  font-size: 12px;
+  cursor: pointer;
+  z-index: 1001;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  transition: all 0.2s ease;
+}
+.selection-button:hover {
+  background: hsl(200 80% 60%);
+  transform: scale(1.05);
+}
+
+/* Selection Panel */
+.selection-panel {
+  position: absolute;
+  width: 300px;
+  background: hsl(240 10% 3.9%);
+  border: 1px solid hsl(240 3.7% 15.9%);
+  border-radius: 12px;
+  z-index: 1002;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+  overflow: hidden;
+}
+.selection-panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  background: hsl(240 3.7% 15.9%);
+  color: hsl(0 0% 98%);
+  font-size: 14px;
+  font-weight: 500;
+}
+.selection-panel-close {
+  background: none;
+  border: none;
+  color: hsl(0 0% 70%);
+  cursor: pointer;
+  font-size: 16px;
+}
+.selection-panel-close:hover {
+  color: white;
+}
+.selection-panel-content {
+  padding: 16px;
+}
+.selection-text {
+  background: hsl(240 3.7% 15.9%);
+  padding: 10px;
+  border-radius: 8px;
+  font-size: 13px;
+  color: hsl(0 0% 80%);
+  margin-bottom: 12px;
+  max-height: 80px;
+  overflow-y: auto;
+}
+.selection-input {
+  width: 100%;
+  min-height: 60px;
+  padding: 10px;
+  background: hsl(240 3.7% 15.9%);
+  border: 1px solid hsl(240 3.7% 20%);
+  border-radius: 8px;
+  color: white;
+  font-size: 13px;
+  resize: none;
+  margin-bottom: 12px;
+  box-sizing: border-box;
+}
+.selection-input:focus {
+  outline: none;
+  border-color: hsl(200 80% 50%);
+}
+.selection-send-btn {
+  width: 100%;
+  padding: 10px;
+  background: hsl(200 80% 50%);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.selection-send-btn:hover {
+  background: hsl(200 80% 60%);
+}
 `;
 }
 

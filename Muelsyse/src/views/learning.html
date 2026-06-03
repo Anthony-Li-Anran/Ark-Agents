@@ -1,0 +1,1990 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Muelsyse - Learning Assistant</title>
+    <link rel="stylesheet" href="../../../Amiya/src/views/styles/dashboard.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/html2pdf.js@0.10.1/dist/html2pdf.bundle.min.js"></script>
+    <style>
+        .sidebar-nav {
+            display: flex;
+            flex-direction: column;
+            gap: 0.25rem;
+        }
+        
+        .nav-item {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.75rem 1rem;
+            border-radius: var(--radius);
+            cursor: pointer;
+            transition: all 0.15s ease;
+            font-size: 0.875rem;
+            font-weight: 500;
+        }
+        
+        .nav-item:hover {
+            background: hsl(var(--accent));
+        }
+        
+        .nav-item.active {
+            background: hsl(var(--primary));
+            color: hsl(var(--primary-foreground));
+        }
+        
+        .nav-icon {
+            font-size: 1.125rem;
+        }
+        
+        .upload-zone {
+            border: 2px dashed hsl(var(--border));
+            border-radius: var(--radius);
+            padding: 2rem;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+        
+        .upload-zone:hover,
+        .upload-zone.dragover {
+            border-color: hsl(var(--primary));
+            background: hsl(var(--muted));
+        }
+        
+        .upload-zone-icon {
+            font-size: 2.5rem;
+            margin-bottom: 0.5rem;
+        }
+        
+        .doc-list {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+        
+        .doc-item {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.75rem 1rem;
+            border: 1px solid hsl(var(--border));
+            border-radius: var(--radius);
+            transition: all 0.15s ease;
+        }
+        
+        .doc-item:hover {
+            border-color: hsl(var(--ring));
+            background: hsl(var(--muted) / 0.5);
+        }
+        
+        .doc-icon {
+            font-size: 1.5rem;
+        }
+        
+        .doc-info {
+            flex: 1;
+            min-width: 0;
+        }
+        
+        .doc-name {
+            font-weight: 500;
+            font-size: 0.875rem;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        
+        .doc-meta {
+            font-size: 0.75rem;
+            color: hsl(var(--muted-foreground));
+        }
+        
+        .doc-actions {
+            display: flex;
+            gap: 0.25rem;
+        }
+        
+        .chat-box {
+            display: flex;
+            flex-direction: column;
+            height: calc(100vh - 8rem);
+            border: 1px solid hsl(var(--border));
+            border-radius: var(--radius);
+            overflow: hidden;
+        }
+        
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 1rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+        
+        .msg {
+            max-width: 85%;
+            padding: 0.625rem 0.875rem;
+            border-radius: var(--radius);
+            font-size: 0.875rem;
+            line-height: 1.5;
+        }
+        
+        .msg.user {
+            align-self: flex-end;
+            background: hsl(var(--primary));
+            color: hsl(var(--primary-foreground));
+        }
+        
+        .msg.assistant {
+            align-self: flex-start;
+            background: hsl(var(--muted));
+        }
+        
+        .chat-bar {
+            display: flex;
+            gap: 0.5rem;
+            padding: 0.75rem;
+            border-top: 1px solid hsl(var(--border));
+        }
+        
+        .chat-input {
+            flex: 1;
+        }
+        
+        .card-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1rem;
+        }
+        
+        .action-card {
+            padding: 1.5rem;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+        
+        .action-card:hover {
+            border-color: hsl(var(--primary));
+            transform: translateY(-2px);
+        }
+        
+        .action-icon {
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+        }
+        
+        .action-title {
+            font-weight: 600;
+            margin-bottom: 0.25rem;
+        }
+        
+        .action-desc {
+            font-size: 0.75rem;
+            color: hsl(var(--muted-foreground));
+        }
+        
+        .flashcard {
+            width: 100%;
+            max-width: 400px;
+            margin: 0 auto;
+            height: 200px;
+            perspective: 1000px;
+            cursor: pointer;
+        }
+        
+        .flashcard-inner {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            transition: transform 0.5s;
+            transform-style: preserve-3d;
+        }
+        
+        .flashcard.flipped .flashcard-inner {
+            transform: rotateY(180deg);
+        }
+        
+        .flashcard-face {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            backface-visibility: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 1.5rem;
+            border-radius: var(--radius);
+            border: 1px solid hsl(var(--border));
+            font-size: 1rem;
+            text-align: center;
+        }
+        
+        .flashcard-front {
+            background: hsl(var(--card));
+        }
+        
+        .flashcard-back {
+            background: hsl(var(--primary));
+            color: hsl(var(--primary-foreground));
+            transform: rotateY(180deg);
+        }
+        
+        .quiz-option {
+            padding: 0.875rem 1rem;
+            border: 1px solid hsl(var(--border));
+            border-radius: var(--radius);
+            cursor: pointer;
+            transition: all 0.15s ease;
+            font-size: 0.875rem;
+        }
+        
+        .quiz-option:hover {
+            background: hsl(var(--muted));
+        }
+        
+        .quiz-option.correct {
+            background: hsl(142 76% 36% / 0.15);
+            border-color: hsl(142 76% 36%);
+        }
+        
+        .quiz-option.wrong {
+            background: hsl(0 72% 51% / 0.15);
+            border-color: hsl(0 72% 51%);
+        }
+        
+        .timer-display {
+            font-size: 4rem;
+            font-weight: 700;
+            font-family: ui-monospace, monospace;
+            color: hsl(var(--primary));
+            text-align: center;
+            padding: 1rem 0;
+        }
+        
+        .timer-controls {
+            display: flex;
+            justify-content: center;
+            gap: 0.5rem;
+            margin: 1rem 0;
+        }
+        
+        .stats-row {
+            display: flex;
+            justify-content: center;
+            gap: 2rem;
+            padding-top: 1rem;
+            border-top: 1px solid hsl(var(--border));
+        }
+        
+        .stat-item {
+            text-align: center;
+        }
+        
+        .stat-value {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: hsl(var(--primary));
+        }
+        
+        .stat-label {
+            font-size: 0.75rem;
+            color: hsl(var(--muted-foreground));
+        }
+
+        .setup-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: hsl(var(--background));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+
+        .setup-card {
+            max-width: 480px;
+            padding: 2.5rem;
+            text-align: center;
+        }
+
+        .setup-icon {
+            font-size: 4rem;
+            margin-bottom: 1rem;
+        }
+
+        .setup-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+
+        .setup-desc {
+            color: hsl(var(--muted-foreground));
+            margin-bottom: 1.5rem;
+            line-height: 1.6;
+        }
+
+        .setup-progress {
+            margin-top: 1.5rem;
+        }
+
+        .progress-bar {
+            height: 8px;
+            background: hsl(var(--muted));
+            border-radius: 4px;
+            overflow: hidden;
+            margin-bottom: 0.5rem;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: hsl(var(--primary));
+            transition: width 0.3s ease;
+        }
+
+        .progress-text {
+            font-size: 0.75rem;
+            color: hsl(var(--muted-foreground));
+        }
+
+        .setup-features {
+            text-align: left;
+            margin: 1.5rem 0;
+            padding: 1rem;
+            background: hsl(var(--muted) / 0.5);
+            border-radius: var(--radius);
+        }
+
+        .setup-feature {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.5rem 0;
+            font-size: 0.875rem;
+        }
+
+        .setup-feature-icon {
+            color: hsl(142 76% 36%);
+        }
+
+        .section-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: hsl(var(--background) / 0.8);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+
+        .section-modal-content {
+            max-width: 600px;
+            width: 90%;
+            max-height: 80vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .section-modal-body {
+            flex: 1;
+            overflow-y: auto;
+            padding: 1.5rem;
+        }
+
+        .section-list {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .section-item {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.75rem 1rem;
+            border: 1px solid hsl(var(--border));
+            border-radius: var(--radius);
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+
+        .section-item:hover {
+            background: hsl(var(--muted));
+        }
+
+        .section-item.selected {
+            background: hsl(var(--primary) / 0.1);
+            border-color: hsl(var(--primary));
+        }
+
+        .section-check {
+            width: 18px;
+            height: 18px;
+            border: 2px solid hsl(var(--border));
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            transition: all 0.15s ease;
+        }
+
+        .section-item.selected .section-check {
+            background: hsl(var(--primary));
+            border-color: hsl(var(--primary));
+        }
+
+        .section-check::after {
+            content: '✓';
+            color: hsl(var(--primary-foreground));
+            font-size: 12px;
+            display: none;
+        }
+
+        .section-item.selected .section-check::after {
+            display: block;
+        }
+
+        .section-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .section-title {
+            font-weight: 500;
+            font-size: 0.875rem;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .section-meta {
+            font-size: 0.75rem;
+            color: hsl(var(--muted-foreground));
+        }
+
+        .section-actions {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .msg.assistant {
+            line-height: 1.7;
+        }
+
+        .msg.assistant .katex-display {
+            margin: 0.5rem 0;
+            overflow-x: auto;
+        }
+
+        .msg.assistant .katex {
+            font-size: 1em;
+        }
+
+        .msg.assistant code {
+            background: hsl(var(--muted));
+            padding: 0.125rem 0.375rem;
+            border-radius: 4px;
+            font-size: 0.875em;
+        }
+
+        .msg.assistant pre {
+            background: hsl(var(--muted));
+            padding: 0.75rem;
+            border-radius: var(--radius);
+            overflow-x: auto;
+            margin: 0.5rem 0;
+        }
+
+        .msg.assistant pre code {
+            background: none;
+            padding: 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="setup-overlay" id="setup-overlay" style="display: none;">
+        <div class="card setup-card">
+            <div class="setup-icon">🌊</div>
+            <h2 class="setup-title">Welcome to Learning Assistant</h2>
+            <p class="setup-desc">
+                To enable semantic search and intelligent Q&A, we need to download a small embedding model (~274MB).
+            </p>
+            
+            <div class="setup-features">
+                <div class="setup-feature">
+                    <span class="setup-feature-icon">✓</span>
+                    <span>Semantic document search</span>
+                </div>
+                <div class="setup-feature">
+                    <span class="setup-feature-icon">✓</span>
+                    <span>Intelligent Q&A based on your documents</span>
+                </div>
+                <div class="setup-feature">
+                    <span class="setup-feature-icon">✓</span>
+                    <span>Auto flashcard & quiz generation</span>
+                </div>
+            </div>
+
+            <button class="btn btn-primary" id="setup-btn" onclick="installEmbeddingModel()" style="width: 100%;">
+                Install Embedding Model
+            </button>
+            
+            <div class="setup-progress" id="setup-progress" style="display: none;">
+                <div class="progress-bar">
+                    <div class="progress-fill" id="progress-fill" style="width: 0%;"></div>
+                </div>
+                <div class="progress-text" id="progress-text">Preparing...</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="section-modal" id="section-modal" style="display: none;">
+        <div class="card section-modal-content">
+            <div class="section-modal-body">
+                <h2 style="font-size: 1.25rem; font-weight: 600; margin-bottom: 0.5rem;" id="section-modal-title">Select Sections</h2>
+                <p class="text-muted text-sm" style="margin-bottom: 1rem;">Choose one or more sections to generate from</p>
+                
+                <div style="display: flex; gap: 0.5rem; margin-bottom: 1rem;">
+                    <button class="btn btn-ghost btn-sm" onclick="selectAllSections()">Select All</button>
+                    <button class="btn btn-ghost btn-sm" onclick="deselectAllSections()">Deselect All</button>
+                </div>
+                
+                <div class="section-list" id="section-list"></div>
+            </div>
+            
+            <div class="section-actions" style="padding: 1rem 1.5rem; border-top: 1px solid hsl(var(--border)); flex-shrink: 0;">
+                <button class="btn btn-outline" onclick="closeSectionModal()" style="flex: 1;">Cancel</button>
+                <button class="btn btn-primary" id="section-generate-btn" onclick="generateFromSections()" style="flex: 1;">Generate</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="section-modal" id="fulltest-modal" style="display: none;">
+        <div class="card section-modal-content">
+            <div class="section-modal-body">
+                <h2 style="font-size: 1.25rem; font-weight: 600; margin-bottom: 0.5rem;">Full Test Settings</h2>
+                <p class="text-muted text-sm" style="margin-bottom: 1rem;">Configure your exam paper</p>
+                
+                <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem; margin-bottom: 1rem;">
+                    <div>
+                        <label class="text-sm" style="font-weight: 500; display: block; margin-bottom: 0.5rem;">Single Choice</label>
+                        <input type="number" class="input" id="ft-single" value="5" min="0" max="20" style="width: 100%;">
+                        <span class="text-muted text-xs">Questions with one correct answer</span>
+                    </div>
+                    <div>
+                        <label class="text-sm" style="font-weight: 500; display: block; margin-bottom: 0.5rem;">Multiple Choice</label>
+                        <input type="number" class="input" id="ft-multi" value="3" min="0" max="20" style="width: 100%;">
+                        <span class="text-muted text-xs">Questions with multiple answers</span>
+                    </div>
+                    <div>
+                        <label class="text-sm" style="font-weight: 500; display: block; margin-bottom: 0.5rem;">Fill in Blank</label>
+                        <input type="number" class="input" id="ft-fill" value="3" min="0" max="20" style="width: 100%;">
+                        <span class="text-muted text-xs">Complete the missing parts</span>
+                    </div>
+                    <div>
+                        <label class="text-sm" style="font-weight: 500; display: block; margin-bottom: 0.5rem;">Essay</label>
+                        <input type="number" class="input" id="ft-essay" value="2" min="0" max="10" style="width: 100%;">
+                        <span class="text-muted text-xs">Open-ended questions</span>
+                    </div>
+                </div>
+                
+                <div style="padding: 0.75rem; background: hsl(var(--muted) / 0.5); border-radius: var(--radius); margin-bottom: 1rem;">
+                    <div style="display: flex; justify-content: space-between; font-size: 0.875rem;">
+                        <span>Total Questions:</span>
+                        <span id="ft-total" style="font-weight: 600;">13</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="section-actions" style="padding: 1rem 1.5rem; border-top: 1px solid hsl(var(--border)); flex-shrink: 0;">
+                <button class="btn btn-outline" onclick="closeFullTestDialog()" style="flex: 1;">Cancel</button>
+                <button class="btn btn-primary" id="fulltest-generate-btn" onclick="genFullTest()" style="flex: 1;">Generate Test</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="dashboard-layout">
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <div class="sidebar-logo">缪</div>
+                <span class="sidebar-title">Learning</span>
+            </div>
+            
+            <div class="sidebar-content">
+                <div class="sidebar-nav">
+                    <div class="nav-item active" data-view="docs" onclick="show('docs')">
+                        <span class="nav-icon">📚</span>
+                        <span>Documents</span>
+                    </div>
+                    <div class="nav-item" data-view="qa" onclick="show('qa')">
+                        <span class="nav-icon">💬</span>
+                        <span>Q&A</span>
+                    </div>
+                    <div class="nav-item" data-view="cards" onclick="show('cards')">
+                        <span class="nav-icon">🚀</span>
+                        <span>Booster</span>
+                    </div>
+                    <div class="nav-item" data-view="timer" onclick="show('timer')">
+                        <span class="nav-icon">🍅</span>
+                        <span>Pomodoro</span>
+                    </div>
+                </div>
+            </div>
+        </aside>
+        
+        <main class="main-content">
+            <section id="view-docs">
+                <div class="page-header">
+                    <div>
+                        <h1 class="page-title">Documents</h1>
+                        <p class="page-description">Upload and manage your study materials</p>
+                    </div>
+                </div>
+                
+                <div class="card" style="margin-bottom: 1.5rem;">
+                    <div style="display: flex; align-items: center; justify-content: space-between; cursor: pointer;" onclick="toggleRagSettings()">
+                        <div style="display: flex; align-items: center; gap: 0.5rem;">
+                            <span style="font-weight: 500;">RAG Settings</span>
+                            <span class="text-muted text-sm">Customize document processing</span>
+                        </div>
+                        <span id="rag-settings-arrow" style="transition: transform 0.2s;">▼</span>
+                    </div>
+                    <div id="rag-settings-panel" style="display: none; margin-top: 1rem; padding-top: 1rem; border-top: 1px solid hsl(var(--border));">
+                        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem;">
+                            <div>
+                                <label class="text-sm" style="font-weight: 500; display: block; margin-bottom: 0.5rem;">Chunk Size</label>
+                                <input type="number" class="input" id="rag-chunk-size" value="800" min="200" max="2000" style="width: 100%;">
+                                <span class="text-muted text-xs">Characters per chunk (200-2000)</span>
+                            </div>
+                            <div>
+                                <label class="text-sm" style="font-weight: 500; display: block; margin-bottom: 0.5rem;">Overlap</label>
+                                <input type="number" class="input" id="rag-overlap" value="200" min="0" max="500" style="width: 100%;">
+                                <span class="text-muted text-xs">Overlap between chunks (0-500)</span>
+                            </div>
+                            <div>
+                                <label class="text-sm" style="font-weight: 500; display: block; margin-bottom: 0.5rem;">Similarity Threshold</label>
+                                <input type="number" class="input" id="rag-threshold" value="0.3" min="0.1" max="0.9" step="0.1" style="width: 100%;">
+                                <span class="text-muted text-xs">Search relevance (0.1-0.9)</span>
+                            </div>
+                        </div>
+                        <div style="margin-top: 1rem;">
+                            <button class="btn btn-outline btn-sm" onclick="saveRagSettings()">Save Settings</button>
+                            <button class="btn btn-ghost btn-sm" onclick="resetRagSettings()">Reset to Default</button>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="upload-zone" id="upload-zone">
+                    <div class="upload-zone-icon">📄</div>
+                    <div style="font-weight: 500;">Drop files here or click to upload</div>
+                    <div class="text-muted text-sm" style="margin-top: 0.25rem;">PDF, Word, TXT, PPT supported</div>
+                    <input type="file" id="file-input" hidden multiple accept=".pdf,.docx,.doc,.txt,.pptx,.ppt">
+                </div>
+                
+                <div id="upload-progress" style="display: none; margin-top: 1rem;">
+                    <div class="card" style="padding: 1rem;">
+                        <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.5rem;">
+                            <span id="upload-filename" style="font-weight: 500;"></span>
+                            <span id="upload-status" class="text-muted text-sm"></span>
+                        </div>
+                        <div class="progress-bar" style="height: 6px; background: hsl(var(--muted)); border-radius: 3px; overflow: hidden;">
+                            <div id="upload-progress-bar" style="height: 100%; background: hsl(var(--primary)); transition: width 0.3s; width: 0%;"></div>
+                        </div>
+                        <div id="upload-detail" class="text-muted text-xs" style="margin-top: 0.5rem;"></div>
+                    </div>
+                </div>
+                
+                <div class="card" style="margin-top: 1.5rem;">
+                    <div class="doc-list" id="doc-list"></div>
+                </div>
+            </section>
+            
+            <section id="view-qa" style="display: none;">
+                <div class="page-header">
+                    <div>
+                        <h1 class="page-title">Q&A</h1>
+                        <p class="page-description">Ask questions about your documents</p>
+                    </div>
+                </div>
+                
+                <div class="chat-box">
+                    <div class="chat-messages" id="chat-msgs"></div>
+                    <div class="chat-bar">
+                        <input type="text" class="input chat-input" id="chat-input" placeholder="Ask anything...">
+                        <button class="btn btn-primary btn-sm" onclick="ask()">Send</button>
+                    </div>
+                </div>
+            </section>
+            
+            <section id="view-cards" style="display: none;">
+                <div class="page-header" style="display: flex; justify-content: space-between; align-items: flex-start;">
+                    <div>
+                        <h1 class="page-title">Booster</h1>
+                        <p class="page-description">Enhance your learning with interactive tools</p>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 0.5rem; flex-shrink: 0;">
+                        <span class="text-muted text-sm">Document:</span>
+                        <select class="select" id="doc-select" style="width: 200px;"></select>
+                    </div>
+                </div>
+                
+                <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; margin-bottom: 1.5rem;">
+                    <div class="card action-card" onclick="genCards()">
+                        <div class="action-icon">🃏</div>
+                        <div class="action-title">Flash Cards</div>
+                        <div class="action-desc">10 cards for quick review</div>
+                    </div>
+                    <div class="card action-card" onclick="genQuickTest()">
+                        <div class="action-icon">⚡</div>
+                        <div class="action-title">Quick Test</div>
+                        <div class="action-desc">10 questions to test knowledge</div>
+                    </div>
+                    <div class="card action-card" onclick="showFullTestDialog()">
+                        <div class="action-icon">📋</div>
+                        <div class="action-title">Full Test</div>
+                        <div class="action-desc">Complete exam with custom types</div>
+                    </div>
+                    <div class="card action-card" onclick="genMindMap()">
+                        <div class="action-icon">🗺️</div>
+                        <div class="action-title">Mind Map</div>
+                        <div class="action-desc">Visualize key concepts</div>
+                    </div>
+                </div>
+                
+                <div id="card-area" style="margin-top: 1.5rem;"></div>
+            </section>
+            
+            <section id="view-timer" style="display: none;">
+                <div class="page-header">
+                    <div>
+                        <h1 class="page-title">Pomodoro Timer</h1>
+                        <p class="page-description">Stay focused and productive</p>
+                    </div>
+                </div>
+                
+                <div class="card" style="max-width: 400px; margin: 0 auto;">
+                    <div class="timer-display" id="timer">25:00</div>
+                    <div class="timer-controls">
+                        <button class="btn btn-primary btn-sm" onclick="startTimer()">Start</button>
+                        <button class="btn btn-outline btn-sm" onclick="pauseTimer()">Pause</button>
+                        <button class="btn btn-outline btn-sm" onclick="stopTimer()">Stop</button>
+                    </div>
+                    <div class="stats-row">
+                        <div class="stat-item">
+                            <div class="stat-value" id="stat-today">0</div>
+                            <div class="stat-label">Today</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-value" id="stat-focus">0m</div>
+                            <div class="stat-label">Focus</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-value" id="stat-total">0</div>
+                            <div class="stat-label">Total</div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script>
+        const { ipcRenderer } = require('electron');
+        let docs = [];
+        let cards = [];
+        let quiz = [];
+        let cardIdx = 0;
+        let quizIdx = 0;
+        let isReady = false;
+        let currentSections = [];
+        let selectedSectionIds = [];
+        let generateMode = 'cards';
+
+        function esc(t) { const d = document.createElement('div'); d.textContent = t; return d.innerHTML; }
+
+        function renderMath(text) {
+            if (typeof katex === 'undefined') {
+                return esc(text);
+            }
+            
+            let result = text;
+            
+            result = result.replace(/\$\$([\s\S]+?)\$\$/g, (match, formula) => {
+                try {
+                    return katex.renderToString(formula.trim(), {
+                        displayMode: true,
+                        throwOnError: false,
+                        output: 'html'
+                    });
+                } catch (e) {
+                    return `<code class="math-error">${esc(formula)}</code>`;
+                }
+            });
+            
+            result = result.replace(/\$([^\$\n]+?)\$/g, (match, formula) => {
+                try {
+                    const cleaned = formula.trim();
+                    if (cleaned.includes(')') && !cleaned.includes('(')) {
+                        return match;
+                    }
+                    return katex.renderToString(cleaned, {
+                        displayMode: false,
+                        throwOnError: false,
+                        output: 'html'
+                    });
+                } catch (e) {
+                    return `<code>${esc(formula)}</code>`;
+                }
+            });
+            
+            result = result.replace(/\\\[([\s\S]+?)\\\]/g, (match, formula) => {
+                try {
+                    return katex.renderToString(formula.trim(), {
+                        displayMode: true,
+                        throwOnError: false,
+                        output: 'html'
+                    });
+                } catch (e) {
+                    return `<code class="math-error">${esc(formula)}</code>`;
+                }
+            });
+            
+            result = result.replace(/\\\(([\s\S]+?)\\\)/g, (match, formula) => {
+                try {
+                    return katex.renderToString(formula.trim(), {
+                        displayMode: false,
+                        throwOnError: false,
+                        output: 'html'
+                    });
+                } catch (e) {
+                    return `<code>${esc(formula)}</code>`;
+                }
+            });
+            
+            return result;
+        }
+
+        function renderMarkdown(text) {
+            let result = text;
+            
+            result = result.replace(/```(\w*)\n([\s\S]*?)```/g, (match, lang, code) => {
+                return `<pre><code class="language-${lang}">${esc(code.trim())}</code></pre>`;
+            });
+            
+            result = result.replace(/`([^`]+)`/g, (match, code) => {
+                return `<code>${esc(code)}</code>`;
+            });
+            
+            result = result.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+            result = result.replace(/\*([^*]+)\*/g, '<em>$1</em>');
+            
+            result = result.replace(/\n/g, '<br>');
+            
+            return result;
+        }
+
+        function renderContent(text) {
+            let result = renderMath(text);
+            result = renderMarkdown(result);
+            return result;
+        }
+
+        async function checkSetup() {
+            const result = await ipcRenderer.invoke('muelsyse-check-embedding-model');
+            if (result.available) {
+                isReady = true;
+                document.getElementById('setup-overlay').style.display = 'none';
+                loadDocs();
+                loadRagSettings();
+                loadStats();
+            } else {
+                document.getElementById('setup-overlay').style.display = 'flex';
+            }
+        }
+
+        async function installEmbeddingModel() {
+            const btn = document.getElementById('setup-btn');
+            const progress = document.getElementById('setup-progress');
+            const progressFill = document.getElementById('progress-fill');
+            const progressText = document.getElementById('progress-text');
+            
+            btn.disabled = true;
+            btn.textContent = 'Installing...';
+            progress.style.display = 'block';
+
+            ipcRenderer.on('ai-pull-model-progress', (event, data) => {
+                if (data.percent !== null) {
+                    progressFill.style.width = data.percent + '%';
+                    progressText.textContent = `Downloading: ${data.percent}%`;
+                } else {
+                    progressText.textContent = data.status || 'Processing...';
+                }
+            });
+
+            const result = await ipcRenderer.invoke('muelsyse-pull-embedding-model');
+            
+            ipcRenderer.removeAllListeners('ai-pull-model-progress');
+
+            if (result.success) {
+                progressFill.style.width = '100%';
+                progressText.textContent = 'Installation complete!';
+                setTimeout(() => {
+                    isReady = true;
+                    document.getElementById('setup-overlay').style.display = 'none';
+                    loadDocs();
+                    loadStats();
+                }, 1000);
+            } else {
+                btn.disabled = false;
+                btn.textContent = 'Install Embedding Model';
+                progressText.textContent = 'Error: ' + (result.message || result.error || 'Installation failed');
+            }
+        }
+
+        function show(name) {
+            document.querySelectorAll('section').forEach(s => s.style.display = 'none');
+            document.getElementById('view-' + name).style.display = 'block';
+            document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+            document.querySelector(`[data-view="${name}"]`).classList.add('active');
+        }
+
+        async function loadDocs() {
+            docs = await ipcRenderer.invoke('muelsyse-get-documents');
+            renderDocs();
+            updateSelect();
+        }
+
+        function renderDocs() {
+            const el = document.getElementById('doc-list');
+            if (!docs.length) {
+                el.innerHTML = `<div class="empty-state"><div class="empty-state-icon">📚</div><div class="empty-state-title">No documents</div><div class="empty-state-description">Upload your first document</div></div>`;
+                return;
+            }
+            el.innerHTML = docs.map(d => `
+                <div class="doc-item">
+                    <span class="doc-icon">📄</span>
+                    <div class="doc-info">
+                        <div class="doc-name">${esc(d.fileName)}</div>
+                        <div class="doc-meta">${d.charCount} chars</div>
+                    </div>
+                    <div class="doc-actions">
+                        <button class="btn btn-ghost btn-sm" onclick="summarize('${d.id}')">Summarize</button>
+                        <button class="btn btn-ghost btn-sm" onclick="delDoc('${d.id}')">Delete</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function updateSelect() {
+            document.getElementById('doc-select').innerHTML = docs.map(d => `<option value="${d.id}">${d.fileName}</option>`).join('');
+        }
+
+        const zone = document.getElementById('upload-zone');
+        const input = document.getElementById('file-input');
+        zone.onclick = () => input.click();
+        zone.ondragover = e => { e.preventDefault(); zone.classList.add('dragover'); };
+        zone.ondragleave = () => zone.classList.remove('dragover');
+        zone.ondrop = async e => {
+            e.preventDefault();
+            zone.classList.remove('dragover');
+            for (const f of e.dataTransfer.files) await upload(f.path);
+        };
+        input.onchange = async e => {
+            for (const f of e.target.files) await upload(f.path);
+        };
+
+        function toggleRagSettings() {
+            const panel = document.getElementById('rag-settings-panel');
+            const arrow = document.getElementById('rag-settings-arrow');
+            if (panel.style.display === 'none') {
+                panel.style.display = 'block';
+                arrow.style.transform = 'rotate(180deg)';
+            } else {
+                panel.style.display = 'none';
+                arrow.style.transform = 'rotate(0deg)';
+            }
+        }
+
+        async function saveRagSettings() {
+            const chunkSize = parseInt(document.getElementById('rag-chunk-size').value) || 800;
+            const overlap = parseInt(document.getElementById('rag-overlap').value) || 200;
+            const threshold = parseFloat(document.getElementById('rag-threshold').value) || 0.3;
+            
+            const r = await ipcRenderer.invoke('muelsyse-update-rag-settings', {
+                chunkSize: Math.max(200, Math.min(2000, chunkSize)),
+                chunkOverlap: Math.max(0, Math.min(500, overlap)),
+                similarityThreshold: Math.max(0.1, Math.min(0.9, threshold))
+            });
+            
+            if (r.success) {
+                alert('RAG settings saved!');
+            }
+        }
+
+        async function resetRagSettings() {
+            document.getElementById('rag-chunk-size').value = 800;
+            document.getElementById('rag-overlap').value = 200;
+            document.getElementById('rag-threshold').value = 0.3;
+            await saveRagSettings();
+        }
+
+        async function loadRagSettings() {
+            const stats = await ipcRenderer.invoke('muelsyse-get-document-stats');
+            if (stats.config) {
+                document.getElementById('rag-chunk-size').value = stats.config.chunkSize || 800;
+                document.getElementById('rag-overlap').value = stats.config.chunkOverlap || 200;
+                document.getElementById('rag-threshold').value = stats.config.similarityThreshold || 0.3;
+            }
+        }
+
+        function showUploadProgress(filename) {
+            const container = document.getElementById('upload-progress');
+            document.getElementById('upload-filename').textContent = filename;
+            document.getElementById('upload-status').textContent = 'Parsing...';
+            document.getElementById('upload-progress-bar').style.width = '0%';
+            document.getElementById('upload-detail').textContent = '';
+            container.style.display = 'block';
+        }
+
+        function updateUploadProgress(percent, status, detail) {
+            document.getElementById('upload-progress-bar').style.width = percent + '%';
+            if (status) document.getElementById('upload-status').textContent = status;
+            if (detail) document.getElementById('upload-detail').textContent = detail;
+        }
+
+        function hideUploadProgress() {
+            document.getElementById('upload-progress').style.display = 'none';
+        }
+
+        async function upload(path) {
+            const filename = path.split(/[/\\]/).pop();
+            showUploadProgress(filename);
+            
+            try {
+                updateUploadProgress(10, 'Parsing file...', '');
+                
+                ipcRenderer.on('muelsyse-upload-progress', (event, data) => {
+                    updateUploadProgress(data.percent, data.status, data.detail || '');
+                });
+                
+                const r = await ipcRenderer.invoke('muelsyse-upload-document', path);
+                
+                ipcRenderer.removeAllListeners('muelsyse-upload-progress');
+                
+                if (r.success) {
+                    updateUploadProgress(100, 'Complete!', `${r.document.charCount} characters, ${r.document.sections?.length || 0} sections`);
+                    setTimeout(() => {
+                        hideUploadProgress();
+                        loadDocs();
+                    }, 1500);
+                } else {
+                    updateUploadProgress(0, 'Error', r.error);
+                    setTimeout(hideUploadProgress, 3000);
+                }
+            } catch (error) {
+                ipcRenderer.removeAllListeners('muelsyse-upload-progress');
+                updateUploadProgress(0, 'Error', error.message);
+                setTimeout(hideUploadProgress, 3000);
+            }
+        }
+
+        async function delDoc(id) {
+            if (!confirm('Delete this document?')) return;
+            await ipcRenderer.invoke('muelsyse-delete-document', id);
+            loadDocs();
+        }
+
+        async function summarize(id) {
+            const r = await ipcRenderer.invoke('muelsyse-summarize', id);
+            alert(r.success ? JSON.stringify(r.summary, null, 2) : 'Error: ' + r.error);
+        }
+
+        async function ask() {
+            const el = document.getElementById('chat-input');
+            const q = el.value.trim();
+            if (!q) return;
+            el.value = '';
+            const msgs = document.getElementById('chat-msgs');
+            msgs.innerHTML += `<div class="msg user">${esc(q)}</div>`;
+            const r = await ipcRenderer.invoke('muelsyse-qa', q, 'main');
+            const answer = r.success ? r.answer : r.error;
+            msgs.innerHTML += `<div class="msg assistant">${renderContent(answer)}</div>`;
+            msgs.scrollTop = msgs.scrollHeight;
+        }
+
+        document.getElementById('chat-input').addEventListener('keypress', e => { if (e.key === 'Enter') ask(); });
+
+        async function genCards() {
+            const id = document.getElementById('doc-select').value;
+            if (!id) return alert('Select a document first');
+            
+            generateMode = 'cards';
+            await showSectionModal(id);
+        }
+
+        async function genQuickTest() {
+            const id = document.getElementById('doc-select').value;
+            if (!id) return alert('Select a document first');
+            
+            generateMode = 'quicktest';
+            await showSectionModal(id);
+        }
+
+        async function showFullTestDialog() {
+            const id = document.getElementById('doc-select').value;
+            if (!id) return alert('Select a document first');
+            
+            generateMode = 'fulltest';
+            await showSectionModal(id);
+        }
+
+        function showFullTestConfigDialog() {
+            updateFullTestTotal();
+            document.getElementById('fulltest-modal').style.display = 'flex';
+        }
+
+        function closeFullTestDialog() {
+            document.getElementById('fulltest-modal').style.display = 'none';
+        }
+
+        function updateFullTestTotal() {
+            const total = 
+                (parseInt(document.getElementById('ft-single').value) || 0) +
+                (parseInt(document.getElementById('ft-multi').value) || 0) +
+                (parseInt(document.getElementById('ft-fill').value) || 0) +
+                (parseInt(document.getElementById('ft-essay').value) || 0);
+            document.getElementById('ft-total').textContent = total;
+        }
+
+        document.querySelectorAll('#fulltest-modal input[type="number"]').forEach(input => {
+            input.addEventListener('input', updateFullTestTotal);
+        });
+
+        let fullTestConfig = null;
+
+        async function genFullTest() {
+            const single = parseInt(document.getElementById('ft-single').value) || 0;
+            const multi = parseInt(document.getElementById('ft-multi').value) || 0;
+            const fill = parseInt(document.getElementById('ft-fill').value) || 0;
+            const essay = parseInt(document.getElementById('ft-essay').value) || 0;
+            
+            if (single + multi + fill + essay === 0) {
+                alert('Please add at least one question');
+                return;
+            }
+            
+            fullTestConfig = { singleChoice: single, multipleChoice: multi, fillBlank: fill, essay: essay };
+            
+            closeFullTestDialog();
+            
+            const btn = document.getElementById('fulltest-generate-btn');
+            btn.disabled = true;
+            
+            const el = document.getElementById('card-area');
+            el.innerHTML = '<div class="card" style="text-align: center; padding: 2rem;"><div class="text-muted">Generating test paper...</div></div>';
+            
+            try {
+                const isFullDoc = selectedSectionIds.includes('full_doc');
+                const docId = document.getElementById('doc-select').value;
+                
+                let r;
+                if (isFullDoc) {
+                    r = await ipcRenderer.invoke('muelsyse-generate-fulltest', docId, fullTestConfig);
+                } else {
+                    r = await ipcRenderer.invoke('muelsyse-generate-fulltest-sections', selectedSectionIds, fullTestConfig);
+                }
+                
+                if (r.success) {
+                    renderFullTest(r.test);
+                } else {
+                    el.innerHTML = `<div class="card" style="text-align: center; padding: 2rem; color: hsl(0 72% 51%);">Error: ${r.error}</div>`;
+                }
+            } finally {
+                btn.disabled = false;
+            }
+        }
+
+        async function genMindMap() {
+            const id = document.getElementById('doc-select').value;
+            if (!id) return alert('Select a document first');
+            
+            generateMode = 'mindmap';
+            await showSectionModal(id);
+        }
+
+        async function generateMindMapFromSection(sectionId) {
+            const el = document.getElementById('card-area');
+            el.innerHTML = '<div class="card" style="text-align: center; padding: 2rem;"><div class="text-muted">Generating mind map...</div></div>';
+            
+            const r = await ipcRenderer.invoke('muelsyse-generate-mindmap-section', sectionId);
+            
+            if (r.success) {
+                const result = await ipcRenderer.invoke('muelsyse-open-mindmap-in-browser', r.mindmap);
+                if (result.success) {
+                    el.innerHTML = '<div class="card" style="text-align: center; padding: 2rem;"><div style="font-size: 2rem; margin-bottom: 0.5rem;">🗺️</div><div>Mind map opened in new window</div></div>';
+                } else {
+                    el.innerHTML = `<div class="card" style="text-align: center; padding: 2rem; color: hsl(0 72% 51%);">Error: ${result.error}</div>`;
+                }
+            } else {
+                el.innerHTML = `<div class="card" style="text-align: center; padding: 2rem; color: hsl(0 72% 51%);">Error: ${r.error}</div>`;
+            }
+        }
+
+        async function showSectionModal(docId) {
+            const result = await ipcRenderer.invoke('muelsyse-get-document-sections', docId);
+            if (!result.success) {
+                alert('Error loading sections: ' + result.error);
+                return;
+            }
+            
+            currentSections = result.sections || [];
+            selectedSectionIds = [];
+            
+            const isSingleSelect = generateMode === 'mindmap';
+            const listEl = document.getElementById('section-list');
+            if (currentSections.length === 0) {
+                listEl.innerHTML = '<div class="text-muted text-sm">No sections found in this document.</div>';
+            } else {
+                listEl.innerHTML = currentSections.map((s, i) => `
+                    <div class="section-item" data-index="${i}" onclick="toggleSection(${i}, ${isSingleSelect})">
+                        <div class="section-check"></div>
+                        <div class="section-info">
+                            <div class="section-title">${esc(s.title)}</div>
+                            <div class="section-meta">${s.charCount} characters</div>
+                        </div>
+                    </div>
+                `).join('');
+            }
+            
+            const titles = {
+                'cards': 'Select Sections for Flash Cards',
+                'quicktest': 'Select Sections for Quick Test',
+                'fulltest': 'Select Sections for Full Test',
+                'mindmap': 'Select Section for Mind Map'
+            };
+            document.getElementById('section-modal-title').textContent = titles[generateMode] || 'Select Sections';
+            
+            document.getElementById('section-modal').style.display = 'flex';
+        }
+
+        function toggleSection(index, isSingleSelect = false) {
+            const sectionId = currentSections[index].id;
+            const itemEl = document.querySelector(`.section-item[data-index="${index}"]`);
+            
+            if (isSingleSelect) {
+                // Single select mode: deselect all others
+                document.querySelectorAll('.section-item').forEach(el => el.classList.remove('selected'));
+                selectedSectionIds = [sectionId];
+                itemEl.classList.add('selected');
+            } else {
+                // Multi select mode
+                if (selectedSectionIds.includes(sectionId)) {
+                    selectedSectionIds = selectedSectionIds.filter(id => id !== sectionId);
+                    itemEl.classList.remove('selected');
+                } else {
+                    selectedSectionIds.push(sectionId);
+                    itemEl.classList.add('selected');
+                }
+            }
+        }
+
+        function selectAllSections() {
+            selectedSectionIds = currentSections.map(s => s.id);
+            document.querySelectorAll('.section-item').forEach(el => el.classList.add('selected'));
+        }
+
+        function deselectAllSections() {
+            selectedSectionIds = [];
+            document.querySelectorAll('.section-item').forEach(el => el.classList.remove('selected'));
+        }
+
+        function closeSectionModal() {
+            document.getElementById('section-modal').style.display = 'none';
+        }
+
+        async function generateFromSections() {
+            if (selectedSectionIds.length === 0) {
+                alert('Please select at least one section');
+                return;
+            }
+            
+            closeSectionModal();
+            
+            const btn = document.getElementById('section-generate-btn');
+            btn.disabled = true;
+            btn.textContent = 'Generating...';
+            
+            const el = document.getElementById('card-area');
+            el.innerHTML = '<div class="card" style="text-align: center; padding: 2rem;"><div class="text-muted">Generating...</div></div>';
+            
+            try {
+                const docId = document.getElementById('doc-select').value;
+                const isFullDoc = selectedSectionIds.includes('full_doc');
+                
+                if (generateMode === 'cards') {
+                    const r = isFullDoc 
+                        ? await ipcRenderer.invoke('muelsyse-generate-flashcards', docId, 10)
+                        : await ipcRenderer.invoke('muelsyse-generate-flashcards-sections', selectedSectionIds, 10);
+                    
+                    if (r.success) { 
+                        cards = r.flashCards; 
+                        cardIdx = 0; 
+                        renderCard(); 
+                    } else {
+                        el.innerHTML = `<div class="card" style="text-align: center; padding: 2rem; color: hsl(0 72% 51%);">Error: ${r.error}</div>`;
+                    }
+                } else if (generateMode === 'quicktest') {
+                    const r = isFullDoc 
+                        ? await ipcRenderer.invoke('muelsyse-generate-quiz', docId, 10)
+                        : await ipcRenderer.invoke('muelsyse-generate-quiz-sections', selectedSectionIds, 10);
+                    
+                    if (r.success) { 
+                        quiz = r.quiz; 
+                        quizIdx = 0; 
+                        quizAnswers = [];
+                        renderQuickTest(); 
+                    } else {
+                        el.innerHTML = `<div class="card" style="text-align: center; padding: 2rem; color: hsl(0 72% 51%);">Error: ${r.error}</div>`;
+                    }
+                } else if (generateMode === 'fulltest') {
+                    showFullTestConfigDialog();
+                } else if (generateMode === 'mindmap') {
+                    closeSectionModal();
+                    if (selectedSectionIds.length > 0) {
+                        await generateMindMapFromSection(selectedSectionIds[0]);
+                    }
+                }
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Generate';
+            }
+        }
+
+        function renderCard() {
+            const el = document.getElementById('card-area');
+            if (!cards.length) { el.innerHTML = ''; return; }
+            const c = cards[cardIdx];
+            el.innerHTML = `
+                <div class="flashcard" onclick="this.classList.toggle('flipped')">
+                    <div class="flashcard-inner">
+                        <div class="flashcard-face flashcard-front">${renderContent(c.front)}</div>
+                        <div class="flashcard-face flashcard-back">${renderContent(c.back)}</div>
+                    </div>
+                </div>
+                <div style="text-align: center; margin-top: 1rem;">
+                    <span class="text-muted text-sm">${cardIdx + 1} / ${cards.length}</span>
+                    <div style="margin-top: 0.5rem;">
+                        <button class="btn btn-outline btn-sm" onclick="prevCard()">← Prev</button>
+                        <button class="btn btn-outline btn-sm" onclick="nextCard()">Next →</button>
+                    </div>
+                </div>
+            `;
+        }
+
+        function prevCard() { if (cardIdx > 0) { cardIdx--; renderCard(); } }
+        function nextCard() { if (cardIdx < cards.length - 1) { cardIdx++; renderCard(); } }
+
+        let quizAnswers = [];
+        
+        function renderQuickTest() {
+            const el = document.getElementById('card-area');
+            if (!quiz.length) { el.innerHTML = ''; return; }
+            const q = quiz[quizIdx];
+            const answered = quizAnswers[quizIdx] !== undefined;
+            
+            el.innerHTML = `
+                <div class="card" style="max-width: 600px; margin: 0 auto;">
+                    <div style="font-weight: 500; margin-bottom: 1rem; line-height: 1.6;">${quizIdx + 1}. ${renderContent(q.question)}</div>
+                    <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+                        ${q.options.map((o, i) => {
+                            let cls = 'quiz-option';
+                            if (answered) {
+                                if (i === q.correctIndex) cls += ' correct';
+                                else if (i === quizAnswers[quizIdx]) cls += ' wrong';
+                            }
+                            return `<div class="${cls}" onclick="${answered ? '' : `ansQuickTest(${i}, ${q.correctIndex})`}">${renderContent(o)}</div>`;
+                        }).join('')}
+                    </div>
+                    ${answered && q.explanation ? `<div style="margin-top: 1rem; padding: 0.75rem; background: hsl(var(--muted)); border-radius: var(--radius); font-size: 0.875rem;"><strong>Explanation:</strong> ${renderContent(q.explanation)}</div>` : ''}
+                    <div style="text-align: center; margin-top: 1rem;">
+                        <span class="text-muted text-sm">${quizIdx + 1} / ${quiz.length}</span>
+                    </div>
+                    <div style="display: flex; justify-content: center; gap: 0.5rem; margin-top: 0.5rem;">
+                        ${quizIdx > 0 ? '<button class="btn btn-outline btn-sm" onclick="prevQuiz()">← Prev</button>' : ''}
+                        <button class="btn btn-primary btn-sm" onclick="nextQuiz()">${quizIdx < quiz.length - 1 ? 'Next →' : 'Finish'}</button>
+                    </div>
+                </div>
+            `;
+        }
+
+        function ansQuickTest(selected, correct) {
+            quizAnswers[quizIdx] = selected;
+            renderQuickTest();
+        }
+
+        function prevQuiz() { if (quizIdx > 0) { quizIdx--; renderQuickTest(); } }
+
+        function nextQuiz() {
+            if (quizIdx < quiz.length - 1) { 
+                quizIdx++; 
+                renderQuickTest(); 
+            } else {
+                const correct = quizAnswers.filter((a, i) => a === quiz[i].correctIndex).length;
+                const el = document.getElementById('card-area');
+                el.innerHTML = `
+                    <div class="card" style="max-width: 500px; margin: 0 auto; text-align: center;">
+                        <div style="font-size: 3rem; margin-bottom: 1rem;">🎉</div>
+                        <div style="font-size: 1.5rem; font-weight: 600; margin-bottom: 0.5rem;">Quick Test Complete!</div>
+                        <div style="font-size: 2rem; font-weight: 700; color: hsl(var(--primary)); margin-bottom: 1rem;">${correct} / ${quiz.length}</div>
+                        <div class="text-muted text-sm">Correct answers</div>
+                        <button class="btn btn-outline btn-sm" style="margin-top: 1.5rem;" onclick="document.getElementById('card-area').innerHTML = '';">Close</button>
+                    </div>
+                `;
+            }
+        }
+
+        function renderFullTest(test) {
+            const el = document.getElementById('card-area');
+            currentFullTest = test;
+            
+            let html = '<div class="card" style="max-width: 800px; margin: 0 auto; padding: 2rem;">';
+            html += '<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">';
+            html += '<h2 style="font-size: 1.5rem; font-weight: 600;">📝 Full Test</h2>';
+            html += '<button class="btn btn-primary btn-sm" onclick="exportFullTestPDF()">📄 Export PDF</button>';
+            html += '</div>';
+            
+            let qNum = 1;
+            const totalQuestions = (test.singleChoice?.length || 0) + (test.multipleChoice?.length || 0) + (test.fillBlank?.length || 0) + (test.essay?.length || 0);
+            
+            html += `<div style="padding: 1rem; background: hsl(var(--muted)); border-radius: var(--radius); margin-bottom: 1.5rem;">`;
+            html += `<div style="display: flex; gap: 2rem; flex-wrap: wrap;">`;
+            if (test.singleChoice?.length) html += `<span class="text-sm">Single Choice: ${test.singleChoice.length}</span>`;
+            if (test.multipleChoice?.length) html += `<span class="text-sm">Multiple Choice: ${test.multipleChoice.length}</span>`;
+            if (test.fillBlank?.length) html += `<span class="text-sm">Fill Blank: ${test.fillBlank.length}</span>`;
+            if (test.essay?.length) html += `<span class="text-sm">Essay: ${test.essay.length}</span>`;
+            html += `<span class="text-sm" style="font-weight: 600;">Total: ${totalQuestions}</span>`;
+            html += '</div></div>';
+            
+            if (test.singleChoice?.length) {
+                html += `<div style="margin-bottom: 2rem;"><div style="font-weight: 600; margin-bottom: 1rem; padding-bottom: 0.5rem; border-bottom: 1px solid hsl(var(--border));">Part I: Single Choice</div>`;
+                test.singleChoice.forEach(q => {
+                    html += `<div style="margin-bottom: 1.5rem;">
+                        <div style="font-weight: 500; margin-bottom: 0.5rem; line-height: 1.6;">${qNum++}. ${renderContent(q.question)}</div>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem;">
+                            ${q.options.map((o, i) => `<div style="padding: 0.5rem; border: 1px solid hsl(var(--border)); border-radius: var(--radius); font-size: 0.875rem;">${String.fromCharCode(65+i)}. ${renderContent(o)}</div>`).join('')}
+                        </div>
+                    </div>`;
+                });
+                html += '</div>';
+            }
+            
+            if (test.multipleChoice?.length) {
+                html += `<div style="margin-bottom: 2rem;"><div style="font-weight: 600; margin-bottom: 1rem; padding-bottom: 0.5rem; border-bottom: 1px solid hsl(var(--border));">Part II: Multiple Choice</div>`;
+                test.multipleChoice.forEach(q => {
+                    html += `<div style="margin-bottom: 1.5rem;">
+                        <div style="font-weight: 500; margin-bottom: 0.5rem; line-height: 1.6;">${qNum++}. ${renderContent(q.question)} <span class="text-muted text-xs">(Select all that apply)</span></div>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem;">
+                            ${q.options.map((o, i) => `<div style="padding: 0.5rem; border: 1px solid hsl(var(--border)); border-radius: var(--radius); font-size: 0.875rem;">${String.fromCharCode(65+i)}. ${renderContent(o)}</div>`).join('')}
+                        </div>
+                    </div>`;
+                });
+                html += '</div>';
+            }
+            
+            if (test.fillBlank?.length) {
+                html += `<div style="margin-bottom: 2rem;"><div style="font-weight: 600; margin-bottom: 1rem; padding-bottom: 0.5rem; border-bottom: 1px solid hsl(var(--border));">Part III: Fill in the Blank</div>`;
+                test.fillBlank.forEach(q => {
+                    html += `<div style="margin-bottom: 1.5rem;">
+                        <div style="font-weight: 500; margin-bottom: 0.5rem; line-height: 1.6;">${qNum++}. ${renderContent(q.question)}</div>
+                        <div style="border-bottom: 1px dashed hsl(var(--border)); margin: 1rem 0; height: 1.5rem;"></div>
+                    </div>`;
+                });
+                html += '</div>';
+            }
+            
+            if (test.essay?.length) {
+                html += `<div style="margin-bottom: 2rem;"><div style="font-weight: 600; margin-bottom: 1rem; padding-bottom: 0.5rem; border-bottom: 1px solid hsl(var(--border));">Part IV: Essay Questions</div>`;
+                test.essay.forEach(q => {
+                    html += `<div style="margin-bottom: 1.5rem;">
+                        <div style="font-weight: 500; margin-bottom: 0.5rem; line-height: 1.6;">${qNum++}. ${renderContent(q.question)}</div>
+                        <div style="min-height: 100px; border: 1px solid hsl(var(--border)); border-radius: var(--radius); padding: 1rem; background: hsl(var(--muted) / 0.3);"></div>
+                    </div>`;
+                });
+                html += '</div>';
+            }
+            
+            html += '<div style="text-align: center; margin-top: 2rem;"><button class="btn btn-outline" onclick="document.getElementById(\'card-area\').innerHTML = \'\'">Close</button></div>';
+            html += '</div>';
+            
+            el.innerHTML = html;
+        }
+
+        let currentFullTest = null;
+
+        function exportFullTestPDF() {
+            if (!currentFullTest) return;
+            
+            const test = currentFullTest;
+            const now = new Date();
+            const dateStr = now.toLocaleDateString('zh-CN');
+            const totalQuestions = (test.singleChoice?.length || 0) + (test.multipleChoice?.length || 0) + (test.fillBlank?.length || 0) + (test.essay?.length || 0);
+            
+            // 学术风格试卷排版
+            let printHtml = `
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <style>
+        @page {
+            size: A4;
+            margin: 25mm 20mm;
+        }
+        body {
+            font-family: "SimSun", "Times New Roman", serif;
+            font-size: 12pt;
+            line-height: 1.6;
+            color: #000;
+            background: #fff;
+        }
+        .paper {
+            max-width: 170mm;
+            margin: 0 auto;
+            padding: 0;
+        }
+        .header {
+            text-align: center;
+            border-bottom: 2px solid #000;
+            padding-bottom: 15px;
+            margin-bottom: 20px;
+        }
+        .header h1 {
+            font-size: 18pt;
+            font-weight: bold;
+            margin: 0 0 8px 0;
+            letter-spacing: 4px;
+        }
+        .header .subtitle {
+            font-size: 10pt;
+            color: #666;
+            margin: 0;
+        }
+        .info-bar {
+            display: flex;
+            justify-content: space-between;
+            font-size: 10pt;
+            border-bottom: 1px solid #ccc;
+            padding: 8px 0;
+            margin-bottom: 20px;
+        }
+        .info-bar span {
+            display: inline-block;
+        }
+        .section {
+            margin-bottom: 25px;
+        }
+        .section-title {
+            font-size: 12pt;
+            font-weight: bold;
+            margin-bottom: 12px;
+            padding-bottom: 5px;
+            border-bottom: 1px solid #000;
+        }
+        .section-title .count {
+            font-weight: normal;
+            font-size: 10pt;
+            color: #666;
+            margin-left: 10px;
+        }
+        .question {
+            margin-bottom: 15px;
+        }
+        .question-text {
+            margin-bottom: 8px;
+            text-align: justify;
+        }
+        .question-num {
+            font-weight: bold;
+            margin-right: 5px;
+        }
+        .options {
+            margin-left: 20px;
+            margin-bottom: 10px;
+        }
+        .option {
+            margin: 4px 0;
+            display: flex;
+        }
+        .option-letter {
+            min-width: 20px;
+        }
+        .answer-line {
+            border-bottom: 1px solid #999;
+            height: 20px;
+            margin: 10px 0 15px 0;
+        }
+        .essay-box {
+            border: 1px solid #ccc;
+            min-height: 80px;
+            margin: 10px 0 15px 0;
+            background: #fafafa;
+        }
+        .page-break {
+            page-break-before: always;
+        }
+        .answer-section {
+            margin-bottom: 20px;
+        }
+        .answer-title {
+            font-size: 14pt;
+            font-weight: bold;
+            text-align: center;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #000;
+        }
+        .answer-item {
+            margin-bottom: 10px;
+            padding: 8px;
+            background: #f9f9f9;
+            border-left: 3px solid #333;
+        }
+        .answer-key {
+            font-weight: bold;
+            color: #c00;
+        }
+        .explanation {
+            color: #666;
+            font-size: 10pt;
+            margin-top: 4px;
+        }
+        .key-points {
+            margin-left: 15px;
+            font-size: 10pt;
+            color: #444;
+        }
+        .key-points li {
+            margin: 3px 0;
+        }
+        .footer {
+            text-align: center;
+            font-size: 9pt;
+            color: #999;
+            margin-top: 30px;
+            border-top: 1px solid #eee;
+            padding-top: 10px;
+        }
+    </style>
+</head>
+<body>
+<div class="paper">
+    <div class="header">
+        <h1>学 习 测 试 卷</h1>
+        <p class="subtitle">Generated by Muelsyse Learning Assistant</p>
+    </div>
+    
+    <div class="info-bar">
+        <span>日期：${dateStr}</span>
+        <span>题量：${totalQuestions} 题</span>
+        <span>姓名：____________</span>
+        <span>得分：____________</span>
+    </div>
+`;
+            
+            let qNum = 1;
+            
+            // 单选题
+            if (test.singleChoice?.length) {
+                printHtml += `
+    <div class="section">
+        <div class="section-title">一、单项选择题<span class="count">（共 ${test.singleChoice.length} 题，每题只有一个正确答案）</span></div>`;
+                test.singleChoice.forEach(q => {
+                    printHtml += `
+        <div class="question">
+            <div class="question-text"><span class="question-num">${qNum}.</span>${q.question}</div>
+            <div class="options">`;
+                    q.options.forEach((o, i) => {
+                        printHtml += `
+                <div class="option"><span class="option-letter">${String.fromCharCode(65+i)}.</span><span>${o}</span></div>`;
+                    });
+                    printHtml += `
+            </div>
+        </div>`;
+                    qNum++;
+                });
+                printHtml += `
+    </div>`;
+            }
+            
+            // 多选题
+            if (test.multipleChoice?.length) {
+                printHtml += `
+    <div class="section">
+        <div class="section-title">二、多项选择题<span class="count">（共 ${test.multipleChoice.length} 题，每题有2-4个正确答案）</span></div>`;
+                test.multipleChoice.forEach(q => {
+                    printHtml += `
+        <div class="question">
+            <div class="question-text"><span class="question-num">${qNum}.</span>${q.question}</div>
+            <div class="options">`;
+                    q.options.forEach((o, i) => {
+                        printHtml += `
+                <div class="option"><span class="option-letter">${String.fromCharCode(65+i)}.</span><span>${o}</span></div>`;
+                    });
+                    printHtml += `
+            </div>
+        </div>`;
+                    qNum++;
+                });
+                printHtml += `
+    </div>`;
+            }
+            
+            // 填空题
+            if (test.fillBlank?.length) {
+                printHtml += `
+    <div class="section">
+        <div class="section-title">三、填空题<span class="count">（共 ${test.fillBlank.length} 题）</span></div>`;
+                test.fillBlank.forEach(q => {
+                    printHtml += `
+        <div class="question">
+            <div class="question-text"><span class="question-num">${qNum}.</span>${q.question}</div>
+            <div class="answer-line"></div>
+        </div>`;
+                    qNum++;
+                });
+                printHtml += `
+    </div>`;
+            }
+            
+            // 主观题
+            if (test.essay?.length) {
+                printHtml += `
+    <div class="section">
+        <div class="section-title">四、主观题<span class="count">（共 ${test.essay.length} 题）</span></div>`;
+                test.essay.forEach(q => {
+                    printHtml += `
+        <div class="question">
+            <div class="question-text"><span class="question-num">${qNum}.</span>${q.question}</div>
+            <div class="essay-box"></div>
+        </div>`;
+                    qNum++;
+                });
+                printHtml += `
+    </div>`;
+            }
+            
+            printHtml += `
+    <div class="footer">— 试卷结束 —</div>
+</div>
+
+<div class="page-break"></div>
+
+<div class="paper">
+    <div class="answer-title">参考答案</div>
+`;
+            
+            qNum = 1;
+            
+            // 单选题答案
+            if (test.singleChoice?.length) {
+                printHtml += `
+    <div class="answer-section">
+        <div class="section-title">一、单项选择题答案</div>`;
+                test.singleChoice.forEach(q => {
+                    const ans = String.fromCharCode(65 + q.correctIndex);
+                    printHtml += `
+        <div class="answer-item">
+            <span class="question-num">${qNum}.</span>
+            <span class="answer-key">${ans}</span>`;
+                    if (q.explanation) {
+                        printHtml += `
+            <div class="explanation">${q.explanation}</div>`;
+                    }
+                    printHtml += `
+        </div>`;
+                    qNum++;
+                });
+                printHtml += `
+    </div>`;
+            }
+            
+            // 多选题答案
+            if (test.multipleChoice?.length) {
+                printHtml += `
+    <div class="answer-section">
+        <div class="section-title">二、多项选择题答案</div>`;
+                test.multipleChoice.forEach(q => {
+                    const ans = q.correctIndices.map(i => String.fromCharCode(65 + i)).join('');
+                    printHtml += `
+        <div class="answer-item">
+            <span class="question-num">${qNum}.</span>
+            <span class="answer-key">${ans}</span>`;
+                    if (q.explanation) {
+                        printHtml += `
+            <div class="explanation">${q.explanation}</div>`;
+                    }
+                    printHtml += `
+        </div>`;
+                    qNum++;
+                });
+                printHtml += `
+    </div>`;
+            }
+            
+            // 填空题答案
+            if (test.fillBlank?.length) {
+                printHtml += `
+    <div class="answer-section">
+        <div class="section-title">三、填空题答案</div>`;
+                test.fillBlank.forEach(q => {
+                    printHtml += `
+        <div class="answer-item">
+            <span class="question-num">${qNum}.</span>
+            <span class="answer-key">${q.answer}</span>`;
+                    if (q.explanation) {
+                        printHtml += `
+            <div class="explanation">${q.explanation}</div>`;
+                    }
+                    printHtml += `
+        </div>`;
+                    qNum++;
+                });
+                printHtml += `
+    </div>`;
+            }
+            
+            // 主观题答案
+            if (test.essay?.length) {
+                printHtml += `
+    <div class="answer-section">
+        <div class="section-title">四、主观题参考答案</div>`;
+                test.essay.forEach(q => {
+                    printHtml += `
+        <div class="answer-item">
+            <div style="font-weight: bold; margin-bottom: 8px;">${qNum}. ${q.question}</div>`;
+                    if (q.referenceAnswer) {
+                        printHtml += `
+            <div style="margin-bottom: 8px;">${q.referenceAnswer}</div>`;
+                    }
+                    if (q.keyPoints?.length) {
+                        printHtml += `
+            <ul class="key-points">`;
+                        q.keyPoints.forEach(p => {
+                            printHtml += `<li>${p}</li>`;
+                        });
+                        printHtml += `</ul>`;
+                    }
+                    printHtml += `
+        </div>`;
+                    qNum++;
+                });
+                printHtml += `
+    </div>`;
+            }
+            
+            printHtml += `
+    <div class="footer">Generated on ${dateStr}</div>
+</div>
+</body>
+</html>`;
+            
+            const element = document.createElement('div');
+            element.innerHTML = printHtml;
+            document.body.appendChild(element);
+            
+            const opt = {
+                margin: [10, 10, 10, 10],
+                filename: `test_paper_${now.getTime()}.pdf`,
+                image: { type: 'jpeg', quality: 0.98 },
+                html2canvas: { scale: 2, useCORS: true, letterRendering: true },
+                jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+                pagebreak: { mode: 'avoid-all', before: '.page-break' }
+            };
+            
+            html2pdf().set(opt).from(element).save().then(() => {
+                document.body.removeChild(element);
+            });
+        }
+
+        function ans(sel, correct) {
+            document.querySelectorAll('.quiz-option').forEach((el, i) => {
+                if (i === correct) el.classList.add('correct');
+                else if (i === sel) el.classList.add('wrong');
+            });
+        }
+
+        function nextQuiz() {
+            if (quizIdx < quiz.length - 1) { quizIdx++; renderQuiz(); }
+            else document.getElementById('card-area').innerHTML = '<div class="card" style="text-align: center; padding: 2rem;">🎉 Quiz Complete!</div>';
+        }
+
+        async function loadStats() {
+            const s = await ipcRenderer.invoke('muelsyse-pomodoro-get-stats');
+            document.getElementById('stat-today').textContent = s.today.pomodoros;
+            document.getElementById('stat-focus').textContent = s.today.focusTime + 'm';
+            document.getElementById('stat-total').textContent = s.total.pomodoros;
+        }
+
+        async function startTimer() { 
+            try {
+                const result = await ipcRenderer.invoke('muelsyse-pomodoro-start');
+                console.log('[Pomodoro] Start result:', result);
+                if (result && !result.success) {
+                    console.error('[Pomodoro] Start failed:', result.error);
+                }
+            } catch (e) {
+                console.error('[Pomodoro] Start error:', e);
+            }
+        }
+        
+        async function pauseTimer() { 
+            try {
+                const result = await ipcRenderer.invoke('muelsyse-pomodoro-pause');
+                console.log('[Pomodoro] Pause result:', result);
+            } catch (e) {
+                console.error('[Pomodoro] Pause error:', e);
+            }
+        }
+        
+        async function stopTimer() { 
+            try {
+                const result = await ipcRenderer.invoke('muelsyse-pomodoro-stop');
+                console.log('[Pomodoro] Stop result:', result);
+                document.getElementById('timer').textContent = '25:00'; 
+                loadStats();
+            } catch (e) {
+                console.error('[Pomodoro] Stop error:', e);
+            }
+        }
+
+        ipcRenderer.on('muelsyse-pomodoro-tick', (e, s) => {
+            console.log('[Pomodoro] Tick received:', s);
+            const m = Math.floor(s.timeRemaining / 60);
+            const sec = s.timeRemaining % 60;
+            document.getElementById('timer').textContent = `${String(m).padStart(2, '0')}:${String(sec).padStart(2, '0')}`;
+        });
+
+        ipcRenderer.on('muelsyse-pomodoro-complete', (e, result) => {
+            console.log('[Pomodoro] Complete:', result);
+            loadStats();
+        });
+
+        checkSetup();
+    </script>
+</body>
+</html>

@@ -13,7 +13,8 @@ const CHAT_BUBBLE_DURATION_MS = 8000;
 const MODEL_NAMES = {
     amiya: 'build_char_002_amiya',
     texas: 'build_char_102_texas',
-    kalts: 'build_char_003_kalts'
+    kalts: 'build_char_003_kalts',
+    muelsyse: 'build_char_249_mlyss'
 };
 
 // Legacy exports for backward compatibility
@@ -88,22 +89,55 @@ const CHARACTER_CONFIGS = {
         },
         moveAnimation: 'Move',
         interactAnimation: 'Interact'
+    },
+    muelsyse: {
+        id: 'muelsyse',
+        name: 'Muelsyse',
+        modelFolder: '249_mlyss',
+        modelName: MODEL_NAMES.muelsyse,
+        width: MODEL_WIDTH,
+        animations: {
+            day: TEXAS_DAY_ANIMATIONS,
+            sleep: TEXAS_SLEEP_ANIMATIONS
+        },
+        moveAnimation: 'Move',
+        interactAnimation: 'Interact'
     }
 };
+
+// Submenu items for Function button
+const FUNCTION_SUBMENU_ITEMS = [
+    { id: 'schedule', label: 'Schedule' },
+    { id: 'memo', label: 'Memo' },
+    { id: 'reminder', label: 'Reminder' }
+];
 
 // Context menu items for Amiya
 const CONTEXT_MENU_ITEMS = [
     { id: 'chat', label: 'Chat' },
-    { id: 'schedule', label: 'Schedule' },
-    { id: 'memo', label: 'Memo' },
-    { id: 'reminder', label: 'Reminder' },
+    { id: 'link', label: 'Link' },
+    { id: 'function', label: 'Function', children: FUNCTION_SUBMENU_ITEMS },
+    { id: 'settings', label: 'Settings' },
     { id: 'operators', label: 'Operators' },
+    { id: 'exit', label: 'Exit' }
+];
+
+// Context menu items for Texas (no AI needed)
+const TEXAS_CONTEXT_MENU_ITEMS = [
+    { id: 'file-management', label: 'File Management' },
     { id: 'exit', label: 'Exit' }
 ];
 
 // Context menu items for Kaltsit (medical consultation)
 const KALTSIT_CONTEXT_MENU_ITEMS = [
     { id: 'medical-consult', label: 'Medical Consult' },
+    { id: 'exit', label: 'Exit' }
+];
+
+// Context menu items for Muelsyse (learning assistant)
+const MUELSYSE_CONTEXT_MENU_ITEMS = [
+    { id: 'learning-assistant', label: 'Learning Assistant' },
+    { id: 'selection-mode', label: 'Selection Mode' },
     { id: 'exit', label: 'Exit' }
 ];
 
@@ -126,5 +160,8 @@ module.exports = {
     TEXAS_ANIMATIONS,
     CHARACTER_CONFIGS,
     CONTEXT_MENU_ITEMS,
-    KALTSIT_CONTEXT_MENU_ITEMS
+    FUNCTION_SUBMENU_ITEMS,
+    TEXAS_CONTEXT_MENU_ITEMS,
+    KALTSIT_CONTEXT_MENU_ITEMS,
+    MUELSYSE_CONTEXT_MENU_ITEMS
 };

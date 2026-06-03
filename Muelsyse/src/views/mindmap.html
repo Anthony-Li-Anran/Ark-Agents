@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mind Map</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #ffffff;
+            overflow: hidden;
+        }
+        #mindmap {
+            width: 100vw;
+            height: 100vh;
+        }
+        #mindmap svg {
+            width: 100%;
+            height: 100%;
+        }
+        .toolbar {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            display: flex;
+            gap: 10px;
+            z-index: 1000;
+        }
+        .toolbar button {
+            background: #f0f0f0;
+            border: 1px solid #ddd;
+            color: #333;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.2s;
+        }
+        .toolbar button:hover {
+            background: #e0e0e0;
+        }
+        .status {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #666;
+            font-size: 18px;
+            text-align: center;
+        }
+        .error {
+            color: #ff6b6b;
+            font-size: 14px;
+            margin-top: 10px;
+            max-width: 400px;
+        }
+    </style>
+</head>
+<body>
+    <div class="toolbar">
+        <button onclick="resetZoom()">Reset View</button>
+        <button onclick="closeWindow()">Close</button>
+    </div>
+    <div id="mindmap">
+        <div class="status" id="status">Loading...</div>
+    </div>
+    
+    <!-- 本地库文件 -->
+    <script src="lib/d3.min.js"></script>
+    <script src="lib/markmap-lib.js"></script>
+    <script src="lib/markmap-view.js"></script>
+    <script>
+        const { ipcRenderer } = require('electron');
+        let currentMarkmap = null;
+        
+        const statusEl = document.getElementById('status');
+        
+        function setStatus(msg, isError = false) {
+            statusEl.innerHTML = msg;
+            if (isError) statusEl.classList.add('error');
+        }
+        
+        async function init() {
+            setStatus('Loading mind map data...');
+            
+            try {
+                const result = await ipcRenderer.invoke('get-mindmap-data');
+                
+                if (!result || !result.markdown) {
+                    setStatus('No data received', true);
+                    return;
+                }
+                
+                setStatus('Rendering mind map...');
+                renderMindMap(result.markdown);
+                
+            } catch (e) {
+                setStatus('Error loading data: ' + e.message, true);
+            }
+        }
+        
+        function renderMindMap(markdown) {
+            try {
+                // markmap-lib 和 markmap-view 都导出到 window.markmap
+                const markmap = window.markmap;
+                
+                if (!markmap) {
+                    setStatus('markmap library not loaded', true);
+                    return;
+                }
+                
+                const Transformer = markmap.Transformer;
+                const Markmap = markmap.Markmap;
+                
+                if (!Transformer || !Markmap) {
+                    setStatus('Library components not found. Transformer: ' + !!Transformer + ', Markmap: ' + !!Markmap, true);
+                    return;
+                }
+                
+                const transformer = new Transformer();
+                const { root } = transformer.transform(markdown);
+                
+                const container = document.getElementById('mindmap');
+                container.innerHTML = '<svg></svg>';
+                const svg = container.querySelector('svg');
+                
+                currentMarkmap = Markmap.create(svg, {
+                    autoFit: true,
+                    duration: 500,
+                    maxWidth: 300
+                }, root);
+                
+                // Clear status on success
+                statusEl.style.display = 'none';
+                
+            } catch (e) {
+                console.error('Render error:', e);
+                setStatus('Render error: ' + e.message, true);
+            }
+        }
+        
+        function resetZoom() {
+            if (currentMarkmap) {
+                try {
+                    currentMarkmap.rescale(1);
+                } catch (e) {
+                    console.error('Reset zoom error:', e);
+                }
+            }
+        }
+        
+        function closeWindow() {
+            ipcRenderer.invoke('close-mindmap-window');
+        }
+        
+        // Wait for libraries to load
+        function waitForLibraries() {
+            if (window.markmap && window.markmap.Transformer && window.markmap.Markmap) {
+                init();
+            } else {
+                setTimeout(waitForLibraries, 50);
+            }
+        }
+        
+        waitForLibraries();
+    </script>
+</body>
+</html>

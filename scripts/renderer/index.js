@@ -43,17 +43,23 @@ const {
     GREETING_BUBBLE_DURATION_MS,
     CHAT_BUBBLE_DURATION_MS,
     CONTEXT_MENU_ITEMS,
+    FUNCTION_SUBMENU_ITEMS,
+    TEXAS_CONTEXT_MENU_ITEMS,
     KALTSIT_CONTEXT_MENU_ITEMS,
+    MUELSYSE_CONTEXT_MENU_ITEMS,
     CHARACTER_CONFIGS,
     MODEL_NAMES
 } = require(path.join(scriptDir, '..', 'shared', 'constants'));
 
-const { AmiyaCharacter, TexasCharacter, KaltsitCharacter } = require(path.join(scriptDir, '..', 'characters'));
+const { AmiyaCharacter, TexasCharacter, KaltsitCharacter, MuelsyseCharacter } = require(path.join(scriptDir, '..', 'characters'));
 const { DragHandler } = require(path.join(scriptDir, 'drag-handler'));
 const chatUI = require(path.join(scriptDir, 'chat-ui'));
 const contextMenu = require(path.join(scriptDir, 'context-menu'));
 const operatorPanel = require(path.join(scriptDir, 'operator-panel'));
 const notification = require(path.join(scriptDir, 'notification'));
+const { IntentRecognizer } = require(path.join(scriptDir, '..', 'shared', 'intent-recognizer'));
+
+const intentRecognizer = new IntentRecognizer();
 
 const canvasContainer = document.getElementById('canvas-container');
 
@@ -73,6 +79,10 @@ let chatActivationInProgress = false;
 let contextMenuTargetId = null;
 let texasSkin = 'default';
 let fileManagementMode = false;
+let selectionMode = false;
+let selectionButton = null;
+let selectionPanel = null;
+let selectionHandler = null;
 
 const TEXAS_SKIN_OPTIONS = [
     {
@@ -448,9 +458,11 @@ function showContextMenu(x, y, charId, bounds) {
     const customContent = charId === 'texas' ? buildTexasSkinSwitcher() : null;
     let menuItems;
     if (charId === 'texas') {
-        menuItems = [{ id: 'file-management', label: 'File management' }, { id: 'exit', label: 'Exit' }];
+        menuItems = TEXAS_CONTEXT_MENU_ITEMS;
     } else if (charId === 'kalts') {
         menuItems = KALTSIT_CONTEXT_MENU_ITEMS;
+    } else if (charId === 'muelsyse') {
+        menuItems = MUELSYSE_CONTEXT_MENU_ITEMS;
     } else {
         menuItems = CONTEXT_MENU_ITEMS;
     }
@@ -503,6 +515,19 @@ async function onContextMenuAction(actionId) {
         hideContextMenu();
         return;
     }
+    if (actionId === 'link') {
+        ipcRenderer.send('open-dingtalk-setup');
+        hideContextMenu();
+        return;
+    }
+    if (actionId === 'function') {
+        contextMenu.showSubmenu(
+            { id: 'function', label: 'Function' },
+            FUNCTION_SUBMENU_ITEMS,
+            onContextMenuAction
+        );
+        return;
+    }
     if (actionId === 'schedule') {
         ipcRenderer.send('open-schedule');
         hideContextMenu();
@@ -518,6 +543,11 @@ async function onContextMenuAction(actionId) {
         hideContextMenu();
         return;
     }
+    if (actionId === 'settings') {
+        ipcRenderer.send('open-ai-settings');
+        hideContextMenu();
+        return;
+    }
     if (actionId === 'operators') {
         showOperatorPanel();
         return;
@@ -525,6 +555,20 @@ async function onContextMenuAction(actionId) {
     if (actionId === 'close-texas') {
         hideOperatorCharacter('texas');
         hideContextMenu();
+        return;
+    }
+    if (actionId === 'learning-assistant') {
+        hideContextMenu();
+        ipcRenderer.send('open-muelsyse-learning');
+        return;
+    }
+    if (actionId === 'selection-mode') {
+        hideContextMenu();
+        if (selectionMode) {
+            disableSelectionMode();
+        } else {
+            enableSelectionMode();
+        }
         return;
     }
 }
@@ -604,7 +648,8 @@ async function setTexasSkin(skinId) {
 function showOperatorPanel() {
     const operators = [
         { id: 'texas', name: 'Texas', checked: selectedOperators.has('texas') },
-        { id: 'kalts', name: "Kal'tsit", checked: selectedOperators.has('kalts') }
+        { id: 'kalts', name: "Kal'tsit", checked: selectedOperators.has('kalts') },
+        { id: 'muelsyse', name: 'Muelsyse', checked: selectedOperators.has('muelsyse') }
     ];
 
     operatorPanel.show({
@@ -681,6 +726,9 @@ async function showOperatorCharacter(operatorId, overrideOptions = {}) {
         case 'kalts':
             CharacterClass = KaltsitCharacter;
             break;
+        case 'muelsyse':
+            CharacterClass = MuelsyseCharacter;
+            break;
         default:
             console.error(`[Renderer] Unknown character class for: ${operatorId}`);
             return false;
@@ -732,8 +780,8 @@ async function enterChatWhenAIReady() {
 
     chatActivationInProgress = true;
     try {
-        const configResult = await ipcRenderer.invoke('ai-get-config');
-        if (configResult.isFirstRun || !configResult.isConfigured || !configResult.model) {
+        const configResult = await ipcRenderer.invoke('ai-get-operator-config', 'amiya');
+        if (!configResult || !configResult.model) {
             pendingChatAfterSetup = true;
             ipcRenderer.send('show-setup-window');
             return;
@@ -1012,16 +1060,6 @@ function createChatUI() {
     inputContainer.style.display = 'flex';
     inputContainer.style.alignItems = 'center';
 
-    // 设置按钮（齿轮图标）
-    const settingsBtn = document.createElement('button');
-    settingsBtn.className = 'settings-btn';
-    settingsBtn.innerHTML = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <circle cx="12" cy="12" r="3"></circle>
-        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
-    </svg>`;
-    settingsBtn.title = 'AI 设置';
-    settingsBtn.onclick = showAISettings;
-
     const messageBox = document.createElement('div');
     messageBox.className = 'messageBox';
 
@@ -1050,7 +1088,6 @@ function createChatUI() {
     exitChatBtn.title = '退出聊天';
     exitChatBtn.onclick = hideChatUI;
 
-    inputContainer.appendChild(settingsBtn);
     inputContainer.appendChild(messageBox);
     inputContainer.appendChild(exitChatBtn);
     chatInputWrapper.appendChild(inputContainer);
@@ -1082,131 +1119,9 @@ function updateChatPosition() {
     updateNotificationPosition();
 }
 
-let aiSettingsModal = null;
-
 function showAISettings() {
-    if (aiSettingsModal) {
-        hideAISettings();
-        return;
+        ipcRenderer.send('open-ai-settings');
     }
-
-    const overlay = document.createElement('div');
-    overlay.className = 'ai-settings-overlay';
-    overlay.onclick = hideAISettings;
-
-    const modal = document.createElement('div');
-    modal.className = 'ai-settings-modal';
-    modal.innerHTML = `
-        <h3>⚙️ AI 设置</h3>
-        <div class="setting-group">
-            <label class="setting-label">当前模型</label>
-            <select id="ai-model-select"></select>
-        </div>
-        <div class="setting-group">
-            <label class="setting-label">已安装的模型</label>
-            <div class="model-list" id="installed-models-list"></div>
-        </div>
-        <div class="setting-group">
-            <label class="setting-label">下载镜像源</label>
-            <select id="ai-mirror-select"></select>
-        </div>
-        <div class="setting-group">
-            <label class="setting-label">模型存储位置</label>
-            <div class="path-row">
-                <input type="text" id="ai-model-path" placeholder="默认位置" readonly>
-                <button class="btn btn-secondary" onclick="selectAIModelPath()">选择</button>
-            </div>
-        </div>
-        <div class="btn-row">
-            <button class="btn btn-secondary" onclick="hideAISettings()">关闭</button>
-            <button class="btn btn-primary" onclick="saveAISettings()">保存</button>
-        </div>
-    `;
-
-    overlay.appendChild(modal);
-    document.body.appendChild(overlay);
-    aiSettingsModal = { overlay, modal };
-
-    loadAISettings();
-}
-
-async function loadAISettings() {
-    const config = await ipcRenderer.invoke('ai-get-config');
-    const models = await ipcRenderer.invoke('ai-get-installed-models');
-    const mirrors = await ipcRenderer.invoke('ai-get-mirrors');
-    const modelPath = await ipcRenderer.invoke('ai-get-model-path');
-
-    // 填充模型选择
-    const modelSelect = document.getElementById('ai-model-select');
-    if (models.success && models.models.length > 0) {
-        modelSelect.innerHTML = models.models.map(m => 
-            `<option value="${m.name || m.id || m.model}" ${config.model === (m.name || m.id || m.model) ? 'selected' : ''}>
-                ${m.name || m.id || m.model} (${m.size || ''})
-            </option>`
-        ).join('');
-    } else {
-        modelSelect.innerHTML = '<option value="">无可用模型</option>';
-    }
-
-    // 填充已安装模型列表
-    const modelsList = document.getElementById('installed-models-list');
-    if (models.success && models.models.length > 0) {
-        modelsList.innerHTML = models.models.map(m => `
-            <div class="model-item">
-                <div>
-                    <div class="model-name">${m.name || m.id || m.model}</div>
-                    <div class="model-size">${m.size || ''}</div>
-                </div>
-                <button class="delete-btn" onclick="deleteAIModel('${m.name || m.id || m.model}')">删除</button>
-            </div>
-        `).join('');
-    } else {
-        modelsList.innerHTML = '<div class="empty-text">暂无已安装的模型</div>';
-    }
-
-    // 填充镜像源选择
-    const mirrorSelect = document.getElementById('ai-mirror-select');
-    mirrorSelect.innerHTML = Object.entries(mirrors).map(([key, mirror]) =>
-        `<option value="${key}" ${config.mirror === key ? 'selected' : ''}>${mirror.name}</option>`
-    ).join('');
-
-    // 填充模型路径
-    document.getElementById('ai-model-path').value = modelPath || '默认位置';
-}
-
-async function selectAIModelPath() {
-    const result = await ipcRenderer.invoke('ai-select-model-path');
-    if (result && result.path) {
-        document.getElementById('ai-model-path').value = result.path;
-    }
-}
-
-async function deleteAIModel(modelName) {
-    if (!confirm(`确定要删除模型 "${modelName}" 吗？`)) return;
-    
-    const result = await ipcRenderer.invoke('ai-delete-model', modelName);
-    if (result.success) {
-        loadAISettings();
-    } else {
-        alert('删除失败: ' + result.message);
-    }
-}
-
-async function saveAISettings() {
-    const model = document.getElementById('ai-model-select').value;
-    const mirror = document.getElementById('ai-mirror-select').value;
-
-    await ipcRenderer.invoke('ai-update-config', { model, mirror });
-    hideAISettings();
-    showAIBubble('设置已保存', false, 2000);
-}
-
-function hideAISettings() {
-    if (aiSettingsModal) {
-        aiSettingsModal.overlay.remove();
-        aiSettingsModal = null;
-    }
-}
 
 function sendUserMessage() {
     const message = messageInput.value.trim();
@@ -1222,6 +1137,59 @@ function sendUserMessage() {
 }
 
 function sendMessageToAI(message) {
+    const intent = intentRecognizer.recognize(message);
+    
+    if (intent.intent === 'medical') {
+        showAIBubble('这个问题您可以问问凯尔希医生。正在为您召唤...', false, 2000);
+        
+        setTimeout(async () => {
+            hideChatUI();
+            
+            if (!characters.kalts) {
+                await showOperatorCharacter('kalts');
+            }
+            
+            setTimeout(async () => {
+                await enterKaltsitChat();
+            }, 500);
+        }, 2000);
+        return;
+    }
+    
+    if (intent.intent === 'file_management') {
+        showAIBubble('好的，正在召唤德克萨斯为您整理文件...', false, 2000);
+        
+        setTimeout(async () => {
+            hideChatUI();
+            
+            if (!characters.texas) {
+                await showOperatorCharacter('texas');
+            }
+            
+            setTimeout(() => {
+                enterFileManagementMode();
+            }, 500);
+        }, 2000);
+        return;
+    }
+    
+    if (intent.intent === 'learning') {
+        showAIBubble('学习相关的问题可以找缪缪帮忙哦！正在为您召唤...', false, 2000);
+        
+        setTimeout(async () => {
+            hideChatUI();
+            
+            if (!characters.muelsyse) {
+                await showOperatorCharacter('muelsyse');
+            }
+            
+            setTimeout(() => {
+                ipcRenderer.send('open-muelsyse-learning');
+            }, 500);
+        }, 2000);
+        return;
+    }
+    
     showLoadingSpinner();
 
     ipcRenderer.invoke('ollama-generate', message).then(result => {
@@ -1276,8 +1244,14 @@ document.addEventListener('keydown', (e) => {
 async function enterKaltsitChat() {
     if (kaltsitChatVisible) return;
     
-    const configResult = await ipcRenderer.invoke('ai-get-config');
-    if (configResult.isFirstRun || !configResult.isConfigured || !configResult.model) {
+    // Check if Kaltsit has a model configured, or if global config has a model
+    const kaltsitConfig = await ipcRenderer.invoke('ai-get-operator-config', 'kaltsit');
+    const globalConfig = await ipcRenderer.invoke('ai-get-config');
+    
+    const hasKaltsitModel = kaltsitConfig && kaltsitConfig.model;
+    const hasGlobalModel = globalConfig && globalConfig.model;
+    
+    if (!hasKaltsitModel && !hasGlobalModel) {
         showAIBubble('请先配置 AI 服务', true, 3000);
         ipcRenderer.send('show-setup-window');
         return;
@@ -1376,6 +1350,161 @@ async function sendKaltsitMessage(message) {
     } catch (error) {
         hideLoadingSpinner();
         showAIBubble('抱歉，发生了错误：' + error.message, true, CHAT_BUBBLE_DURATION_MS);
+    }
+}
+
+function initSelectionMode() {
+    if (selectionHandler) return;
+    
+    const { SelectionHandler } = require(path.join(scriptDir, '..', '..', 'Muelsyse', 'src', 'modules', 'selection', 'selection-handler'));
+    selectionHandler = new SelectionHandler();
+    selectionHandler.onSelection = showSelectionButton;
+}
+
+function enableSelectionMode() {
+    if (!selectionHandler) {
+        initSelectionMode();
+    }
+    selectionHandler.enable();
+    selectionMode = true;
+    
+    if (characters.muelsyse) {
+        showAIBubble('划词模式已开启，选中任意文本即可提问', false, 3000);
+    }
+}
+
+function disableSelectionMode() {
+    if (selectionHandler) {
+        selectionHandler.disable();
+    }
+    selectionMode = false;
+    hideSelectionButton();
+    hideSelectionPanel();
+}
+
+function showSelectionButton(selection) {
+    hideSelectionButton();
+    
+    selectionButton = document.createElement('button');
+    selectionButton.className = 'selection-button';
+    selectionButton.textContent = '问缪缪';
+    selectionButton.onclick = () => showSelectionPanel(selection);
+    
+    const x = selection.rect.left + selection.rect.width / 2;
+    const y = selection.rect.top - 10;
+    
+    selectionButton.style.left = `${Math.max(10, Math.min(screenWidth - 80, x - 30))}px`;
+    selectionButton.style.top = `${Math.max(10, y - 40)}px`;
+    
+    document.body.appendChild(selectionButton);
+    
+    setTimeout(() => {
+        if (selectionButton) {
+            hideSelectionButton();
+        }
+    }, 5000);
+}
+
+function hideSelectionButton() {
+    if (selectionButton) {
+        selectionButton.remove();
+        selectionButton = null;
+    }
+}
+
+function showSelectionPanel(selection) {
+    hideSelectionButton();
+    
+    selectionPanel = document.createElement('div');
+    selectionPanel.className = 'selection-panel';
+    selectionPanel.innerHTML = `
+        <div class="selection-panel-header">
+            <span>向缪缪提问</span>
+            <button class="selection-panel-close" onclick="hideSelectionPanel()">✕</button>
+        </div>
+        <div class="selection-panel-content">
+            <div class="selection-text">"${selection.text.length > 100 ? selection.text.slice(0, 100) + '...' : selection.text}"</div>
+            <textarea class="selection-input" placeholder="补充问题（可选）..."></textarea>
+            <button class="selection-send-btn">发送</button>
+        </div>
+    `;
+    
+    const x = selection.rect.left;
+    const y = selection.rect.bottom + 10;
+    
+    selectionPanel.style.left = `${Math.max(10, Math.min(screenWidth - 320, x))}px`;
+    selectionPanel.style.top = `${Math.min(screenHeight - 200, y)}px`;
+    
+    document.body.appendChild(selectionPanel);
+    
+    const input = selectionPanel.querySelector('.selection-input');
+    input.focus();
+    
+    input.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            sendSelectionQuestion(selection.text, input.value);
+        }
+    });
+    
+    selectionPanel.querySelector('.selection-send-btn').onclick = () => {
+        sendSelectionQuestion(selection.text, input.value);
+    };
+    
+    document.addEventListener('keydown', handleSelectionEscape);
+    
+    setTimeout(() => {
+        document.addEventListener('click', handleSelectionClickOutside);
+    }, 100);
+}
+
+function hideSelectionPanel() {
+    if (selectionPanel) {
+        selectionPanel.remove();
+        selectionPanel = null;
+    }
+    document.removeEventListener('keydown', handleSelectionEscape);
+    document.removeEventListener('click', handleSelectionClickOutside);
+}
+
+function handleSelectionEscape(e) {
+    if (e.key === 'Escape') {
+        hideSelectionPanel();
+    }
+}
+
+function handleSelectionClickOutside(e) {
+    if (selectionPanel && !selectionPanel.contains(e.target) && !selectionButton?.contains(e.target)) {
+        hideSelectionPanel();
+    }
+}
+
+async function sendSelectionQuestion(selectedText, additionalQuestion) {
+    hideSelectionPanel();
+    
+    const question = additionalQuestion 
+        ? `${additionalQuestion}\n\n上下文：${selectedText}`
+        : `请解释：${selectedText}`;
+    
+    showLoadingSpinner();
+    
+    try {
+        const searchResult = await ipcRenderer.invoke('muelsyse-search-documents', selectedText, 3, 0.5);
+        
+        let answer;
+        if (searchResult && searchResult.length > 0) {
+            const qaResult = await ipcRenderer.invoke('muelsyse-qa', question, 'selection');
+            answer = qaResult.answer;
+        } else {
+            const result = await ipcRenderer.invoke('ollama-generate', question);
+            answer = result.response;
+        }
+        
+        hideLoadingSpinner();
+        showAIBubble(answer, false, 10000);
+    } catch (error) {
+        hideLoadingSpinner();
+        showAIBubble('抱歉，处理问题时出错了：' + error.message, true, 5000);
     }
 }
 

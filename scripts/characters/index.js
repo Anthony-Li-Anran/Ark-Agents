@@ -7,10 +7,12 @@ const { CharacterBase } = require(path.join(__dirname, 'character-base'));
 const { AmiyaCharacter } = require(path.join(__dirname, 'amiya'));
 const { TexasCharacter } = require(path.join(__dirname, 'texas'));
 const { KaltsitCharacter } = require(path.join(__dirname, 'kaltsit'));
+const { MuelsyseCharacter } = require(path.join(__dirname, 'muelsyse'));
 
 module.exports = {
     CharacterBase,
     AmiyaCharacter,
     TexasCharacter,
-    KaltsitCharacter
+    KaltsitCharacter,
+    MuelsyseCharacter
 };

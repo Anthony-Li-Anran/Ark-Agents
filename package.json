@@ -1,6 +1,6 @@
 {
   "name": "ark-agents",
-  "version": "0.2.0-beta.1",
+  "version": "0.1.0",
   "description": "基于罗德岛干员的 Electron 模块化多智能体桌面应用",
   "main": "scripts/main.js",
   "author": "Anthony_Li",
@@ -26,6 +26,7 @@
       "Amiya/**/*",
       "Texas/**/*",
       "Kaltsit/**/*",
+      "Muelsyse/**/*",
       "models/**/*",
       "Models/**/*",
       "package.json"
@@ -38,11 +39,15 @@
       "target": [
         {
           "target": "nsis",
-          "arch": ["x64"]
+          "arch": [
+            "x64"
+          ]
         },
         {
           "target": "portable",
-          "arch": ["x64"]
+          "arch": [
+            "x64"
+          ]
         }
       ]
     },
@@ -57,7 +62,10 @@
       "target": [
         {
           "target": "dmg",
-          "arch": ["x64", "arm64"]
+          "arch": [
+            "x64",
+            "arm64"
+          ]
         }
       ],
       "category": "public.app-category.entertainment"
@@ -76,7 +84,13 @@
   },
   "dependencies": {
     "@electron/remote": "^2.1.2",
+    "@larksuiteoapi/node-sdk": "^1.66.0",
     "@pixi-spine/all-3.8": "3.1.2",
-    "pixi.js": "6.5.10"
+    "mammoth": "^1.6.0",
+    "officeparser": "^4.0.5",
+    "ollama": "^0.5.0",
+    "pdf-parse": "^1.1.1",
+    "pixi.js": "6.5.10",
+    "ws": "^8.21.0"
   }
 }

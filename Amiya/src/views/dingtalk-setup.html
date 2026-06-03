@@ -1,0 +1,527 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>钉钉机器人配置 - Ark Agents</title>
+    <link rel="stylesheet" href="styles/dashboard.css">
+    <style>
+        .setup-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            padding: 2rem;
+        }
+
+        .setup-card {
+            width: 100%;
+            max-width: 640px;
+            background: hsl(var(--card));
+            border: 1px solid hsl(var(--border));
+            border-radius: var(--radius);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        }
+
+        .setup-header {
+            text-align: center;
+            padding: 2rem 2rem 1.5rem;
+            border-bottom: 1px solid hsl(var(--border));
+        }
+
+        .setup-header h1 {
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+
+        .setup-header p {
+            color: hsl(var(--muted-foreground));
+            font-size: 0.875rem;
+        }
+
+        .setup-body {
+            padding: 1.5rem 2rem 2rem;
+        }
+
+        .agent-section {
+            margin-bottom: 1.5rem;
+            padding: 1.25rem;
+            background: hsl(var(--muted));
+            border-radius: var(--radius);
+            border: 1px solid hsl(var(--border));
+        }
+
+        .agent-section:last-child {
+            margin-bottom: 0;
+        }
+
+        .agent-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 1rem;
+            padding-bottom: 0.75rem;
+            border-bottom: 1px solid hsl(var(--border));
+        }
+
+        .agent-info {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .agent-icon {
+            width: 2.5rem;
+            height: 2.5rem;
+            border-radius: calc(var(--radius) - 2px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.125rem;
+        }
+
+        .agent-icon.amiya { background: #ffe4e1; }
+        .agent-icon.texas { background: #e6f3ff; }
+        .agent-icon.kaltsit { background: #f0f8e6; }
+
+        .agent-details h3 {
+            font-size: 0.9375rem;
+            font-weight: 600;
+            margin-bottom: 0.125rem;
+        }
+
+        .agent-details p {
+            font-size: 0.75rem;
+            color: hsl(var(--muted-foreground));
+        }
+
+        .form-group {
+            margin-bottom: 0.875rem;
+        }
+
+        .form-group:last-child {
+            margin-bottom: 0;
+        }
+
+        .form-label {
+            display: block;
+            font-size: 0.8125rem;
+            font-weight: 500;
+            margin-bottom: 0.375rem;
+        }
+
+        .form-hint {
+            font-size: 0.6875rem;
+            color: hsl(var(--muted-foreground));
+            margin-top: 0.25rem;
+        }
+
+        .input {
+            width: 100%;
+            padding: 0.5rem 0.75rem;
+            background: hsl(var(--background));
+            border: 1px solid hsl(var(--border));
+            border-radius: calc(var(--radius) - 2px);
+            font-size: 0.875rem;
+            color: hsl(var(--foreground));
+            transition: all 0.15s ease;
+        }
+
+        .input:focus {
+            outline: none;
+            border-color: hsl(var(--ring));
+            box-shadow: 0 0 0 2px hsl(var(--ring) / 0.2);
+        }
+
+        .input::placeholder {
+            color: hsl(var(--muted-foreground));
+        }
+
+        .input[readonly] {
+            background: hsl(var(--muted));
+            cursor: not-allowed;
+        }
+
+        .toggle-switch {
+            position: relative;
+            width: 44px;
+            height: 24px;
+        }
+
+        .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: hsl(var(--border));
+            transition: .3s;
+            border-radius: 24px;
+        }
+
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 18px;
+            width: 18px;
+            left: 3px;
+            bottom: 3px;
+            background-color: white;
+            transition: .3s;
+            border-radius: 50%;
+        }
+
+        input:checked + .slider {
+            background-color: hsl(142 76% 36%);
+        }
+
+        input:checked + .slider:before {
+            transform: translateX(20px);
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 0.75rem;
+            margin-top: 1.5rem;
+        }
+
+        .btn {
+            flex: 1;
+            padding: 0.625rem 1rem;
+            border: 1px solid hsl(var(--border));
+            border-radius: calc(var(--radius) - 2px);
+            font-size: 0.875rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            text-align: center;
+        }
+
+        .btn-primary {
+            background: hsl(var(--primary));
+            color: hsl(var(--primary-foreground));
+            border-color: hsl(var(--primary));
+        }
+
+        .btn-primary:hover {
+            opacity: 0.9;
+        }
+
+        .btn-secondary {
+            background: hsl(var(--secondary));
+            color: hsl(var(--secondary-foreground));
+        }
+
+        .btn-secondary:hover {
+            background: hsl(var(--muted));
+        }
+
+        .status-message {
+            margin-top: 1rem;
+            padding: 0.75rem;
+            border-radius: calc(var(--radius) - 2px);
+            text-align: center;
+            font-size: 0.875rem;
+            display: none;
+        }
+
+        .status-message.success {
+            background: hsl(142 76% 36% / 0.1);
+            color: hsl(142 76% 36%);
+            border: 1px solid hsl(142 76% 36% / 0.2);
+            display: block;
+        }
+
+        .status-message.error {
+            background: hsl(0 84% 60% / 0.1);
+            color: hsl(0 84% 60%);
+            border: 1px solid hsl(0 84% 60% / 0.2);
+            display: block;
+        }
+
+        .status-message.info {
+            background: hsl(217 91% 60% / 0.1);
+            color: hsl(217 91% 60%);
+            border: 1px solid hsl(217 91% 60% / 0.2);
+            display: block;
+        }
+
+        .help-text {
+            margin-top: 1.25rem;
+            padding: 1rem;
+            background: hsl(217 91% 60% / 0.05);
+            border: 1px solid hsl(217 91% 60% / 0.15);
+            border-radius: var(--radius);
+            font-size: 0.8125rem;
+            color: hsl(var(--foreground));
+            line-height: 1.6;
+        }
+
+        .help-text h4 {
+            margin-bottom: 0.5rem;
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: hsl(217 91% 60%);
+        }
+
+        .help-text ol {
+            margin-left: 1.25rem;
+        }
+
+        .help-text li {
+            margin-bottom: 0.25rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="setup-container">
+        <div class="setup-card">
+            <div class="setup-header">
+                <h1>钉钉机器人配置</h1>
+                <p>为每个干员配置独立的钉钉机器人</p>
+            </div>
+
+            <div class="setup-body">
+                <!-- Amiya -->
+                <div class="agent-section">
+                    <div class="agent-header">
+                        <div class="agent-info">
+                            <div class="agent-icon amiya">🐰</div>
+                            <div class="agent-details">
+                                <h3>阿米娅</h3>
+                                <p>通用对话与任务管理</p>
+                            </div>
+                        </div>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="amiya-enabled">
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="amiya-appKey">AppKey</label>
+                        <input type="text" class="input" id="amiya-appKey" placeholder="企业内部应用的 AppKey">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="amiya-appSecret">AppSecret</label>
+                        <input type="password" class="input" id="amiya-appSecret" placeholder="企业内部应用的 AppSecret">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="amiya-webhookUrl">Webhook 地址</label>
+                        <input type="text" class="input" id="amiya-webhookUrl" placeholder="https://oapi.dingtalk.com/robot/send?access_token=xxx">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="amiya-secret">密钥 (Secret)</label>
+                        <input type="password" class="input" id="amiya-secret" placeholder="选填，用于签名验证">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="amiya-accessToken">Access Token</label>
+                        <input type="text" class="input" id="amiya-accessToken" placeholder="自动从 Webhook 提取" readonly>
+                    </div>
+                </div>
+
+                <!-- Texas -->
+                <div class="agent-section">
+                    <div class="agent-header">
+                        <div class="agent-info">
+                            <div class="agent-icon texas">🐺</div>
+                            <div class="agent-details">
+                                <h3>德克萨斯</h3>
+                                <p>文件整理专家</p>
+                            </div>
+                        </div>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="texas-enabled">
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="texas-appKey">AppKey</label>
+                        <input type="text" class="input" id="texas-appKey" placeholder="企业内部应用的 AppKey">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="texas-appSecret">AppSecret</label>
+                        <input type="password" class="input" id="texas-appSecret" placeholder="企业内部应用的 AppSecret">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="texas-webhookUrl">Webhook 地址</label>
+                        <input type="text" class="input" id="texas-webhookUrl" placeholder="https://oapi.dingtalk.com/robot/send?access_token=xxx">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="texas-secret">密钥 (Secret)</label>
+                        <input type="password" class="input" id="texas-secret" placeholder="选填，用于签名验证">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="texas-accessToken">Access Token</label>
+                        <input type="text" class="input" id="texas-accessToken" placeholder="自动从 Webhook 提取" readonly>
+                    </div>
+                </div>
+
+                <!-- Kaltsit -->
+                <div class="agent-section">
+                    <div class="agent-header">
+                        <div class="agent-info">
+                            <div class="agent-icon kaltsit">🐱</div>
+                            <div class="agent-details">
+                                <h3>凯尔希</h3>
+                                <p>医疗咨询顾问</p>
+                            </div>
+                        </div>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="kaltsit-enabled">
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="kaltsit-appKey">AppKey</label>
+                        <input type="text" class="input" id="kaltsit-appKey" placeholder="企业内部应用的 AppKey">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="kaltsit-appSecret">AppSecret</label>
+                        <input type="password" class="input" id="kaltsit-appSecret" placeholder="企业内部应用的 AppSecret">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="kaltsit-webhookUrl">Webhook 地址</label>
+                        <input type="text" class="input" id="kaltsit-webhookUrl" placeholder="https://oapi.dingtalk.com/robot/send?access_token=xxx">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="kaltsit-secret">密钥 (Secret)</label>
+                        <input type="password" class="input" id="kaltsit-secret" placeholder="选填，用于签名验证">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="kaltsit-accessToken">Access Token</label>
+                        <input type="text" class="input" id="kaltsit-accessToken" placeholder="自动从 Webhook 提取" readonly>
+                    </div>
+                </div>
+
+                <div class="btn-group">
+                    <button class="btn btn-secondary" onclick="testAllConnections()">测试全部连接</button>
+                    <button class="btn btn-primary" onclick="saveConfig()">保存配置</button>
+                </div>
+
+                <div class="status-message" id="statusMessage"></div>
+
+                <div class="help-text">
+                    <h4>配置说明</h4>
+                    <p style="margin-bottom: 0.5rem; font-weight: 500;">每个干员需要独立的钉钉应用和群机器人：</p>
+                    <ol>
+                        <li>访问 <a href="https://open.dingtalk.com" target="_blank">钉钉开放平台</a></li>
+                        <li>为每个干员创建独立的企业内部应用</li>
+                        <li>获取每个应用的 AppKey 和 AppSecret</li>
+                        <li>在每个应用里开启机器人能力</li>
+                        <li>将机器人添加到对应的群</li>
+                        <li>复制每个机器人的 Webhook 地址填入上方</li>
+                    </ol>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const { ipcRenderer } = require('electron');
+        const agents = ['amiya', 'texas', 'kaltsit'];
+
+        async function loadConfig() {
+            const config = await ipcRenderer.invoke('dingtalk-get-config');
+
+            for (const agent of agents) {
+                const agentConfig = config.agents?.[agent] || {};
+                document.getElementById(`${agent}-enabled`).checked = agentConfig.enabled || false;
+                document.getElementById(`${agent}-appKey`).value = agentConfig.appKey || '';
+                document.getElementById(`${agent}-appSecret`).value = agentConfig.appSecret || '';
+                document.getElementById(`${agent}-webhookUrl`).value = agentConfig.webhookUrl || '';
+                document.getElementById(`${agent}-secret`).value = agentConfig.secret || '';
+                document.getElementById(`${agent}-accessToken`).value = agentConfig.accessToken || '';
+            }
+        }
+
+        async function saveConfig() {
+            const updates = {};
+
+            for (const agent of agents) {
+                updates[agent] = {
+                    enabled: document.getElementById(`${agent}-enabled`).checked,
+                    appKey: document.getElementById(`${agent}-appKey`).value.trim(),
+                    appSecret: document.getElementById(`${agent}-appSecret`).value.trim(),
+                    webhookUrl: document.getElementById(`${agent}-webhookUrl`).value.trim(),
+                    secret: document.getElementById(`${agent}-secret`).value.trim(),
+                    accessToken: document.getElementById(`${agent}-accessToken`).value.trim()
+                };
+
+                const result = await ipcRenderer.invoke('dingtalk-update-agent-config', agent, updates[agent]);
+                if (!result) {
+                    showStatus(`${getAgentName(agent)} 配置保存失败`, 'error');
+                    return;
+                }
+            }
+
+            showStatus('所有配置保存成功！请重启应用以启用消息接收。', 'success');
+        }
+
+        async function testAllConnections() {
+            showStatus('正在测试连接...', 'info');
+
+            const results = [];
+            for (const agent of agents) {
+                if (!document.getElementById(`${agent}-enabled`).checked) continue;
+
+                const result = await ipcRenderer.invoke('dingtalk-test-connection', agent);
+                results.push({ agent, ...result });
+            }
+
+            const successCount = results.filter(r => r.success).length;
+            const totalCount = results.length;
+
+            if (successCount === totalCount) {
+                showStatus(`全部 ${totalCount} 个机器人连接成功！`, 'success');
+            } else {
+                const failed = results.filter(r => !r.success).map(r => `${getAgentName(r.agent)}: ${r.error}`).join(', ');
+                showStatus(`连接失败：${failed}`, 'error');
+            }
+        }
+
+        function getAgentName(agent) {
+            const names = { amiya: '阿米娅', texas: '德克萨斯', kaltsit: '凯尔希' };
+            return names[agent] || agent;
+        }
+
+        function showStatus(message, type) {
+            const statusEl = document.getElementById('statusMessage');
+            statusEl.textContent = message;
+            statusEl.className = `status-message ${type}`;
+
+            setTimeout(() => {
+                statusEl.className = 'status-message';
+            }, 5000);
+        }
+
+        // Auto-extract access token from webhook URL
+        for (const agent of agents) {
+            document.getElementById(`${agent}-webhookUrl`).addEventListener('blur', function() {
+                const url = this.value.trim();
+                if (url) {
+                    try {
+                        const urlObj = new URL(url);
+                        const token = urlObj.searchParams.get('access_token');
+                        if (token) {
+                            document.getElementById(`${agent}-accessToken`).value = token;
+                        }
+                    } catch (e) {
+                        // Invalid URL, ignore
+                    }
+                }
+            });
+        }
+
+        loadConfig();
+    </script>
+</body>
+</html>

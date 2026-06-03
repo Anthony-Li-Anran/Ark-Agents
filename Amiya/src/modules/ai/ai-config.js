@@ -12,16 +12,23 @@ const execPromise = util.promisify(exec);
 
 const CONFIG_FILE = 'ai-config.json';
 
-// Default configuration
 const defaultConfig = {
-    provider: 'ollama', // 'ollama', 'lmstudio', 'openai', 'custom'
+    provider: 'ollama',
     endpoint: 'http://127.0.0.1:11434',
     model: '',
     apiKey: '',
     isFirstRun: true,
     isConfigured: false,
-    isFirstConnect: true, // Show takeover message on first successful connection
-    mirror: 'auto' // 'auto', 'official', 'aliyun', 'custom'
+    isFirstConnect: true,
+    mirror: 'auto'
+};
+
+const defaultOperatorConfig = {
+    provider: 'ollama',
+    endpoint: 'http://127.0.0.1:11434',
+    model: '',
+    apiKey: '',
+    isConfigured: false
 };
 
 const mirrors = {
@@ -49,18 +56,77 @@ const providers = {
     },
     lmstudio: {
         name: 'LM Studio',
-        defaultEndpoint: 'http://127.0.0.1:1234',
+        defaultEndpoint: 'http://127.0.0.1:1234/v1',
         defaultModel: 'local-model',
         models: [],
         requiresApiKey: false
     },
     openai: {
-        name: 'OpenAI API',
+        name: 'OpenAI',
         defaultEndpoint: 'https://api.openai.com/v1',
-        defaultModel: 'gpt-3.5-turbo',
+        defaultModel: 'gpt-4o-mini',
         models: [
-            { id: 'gpt-3.5-turbo', name: 'GPT-3.5 Turbo', desc: '性价比高' },
-            { id: 'gpt-4', name: 'GPT-4', desc: '最强性能' }
+            { id: 'gpt-4o', name: 'GPT-4o', desc: '最新旗舰模型' },
+            { id: 'gpt-4o-mini', name: 'GPT-4o Mini', desc: '性价比高' },
+            { id: 'gpt-4-turbo', name: 'GPT-4 Turbo', desc: '高性能' },
+            { id: 'gpt-3.5-turbo', name: 'GPT-3.5 Turbo', desc: '经济实惠' }
+        ],
+        requiresApiKey: true
+    },
+    anthropic: {
+        name: 'Anthropic (Claude)',
+        defaultEndpoint: 'https://api.anthropic.com/v1',
+        defaultModel: 'claude-3-5-sonnet-latest',
+        models: [
+            { id: 'claude-3-5-sonnet-latest', name: 'Claude 3.5 Sonnet', desc: '最新推荐' },
+            { id: 'claude-3-opus-latest', name: 'Claude 3 Opus', desc: '最强性能' },
+            { id: 'claude-3-sonnet-20240229', name: 'Claude 3 Sonnet', desc: '平衡性能' },
+            { id: 'claude-3-haiku-20240307', name: 'Claude 3 Haiku', desc: '快速响应' }
+        ],
+        requiresApiKey: true
+    },
+    deepseek: {
+        name: 'DeepSeek',
+        defaultEndpoint: 'https://api.deepseek.com/v1',
+        defaultModel: 'deepseek-chat',
+        models: [
+            { id: 'deepseek-chat', name: 'DeepSeek Chat', desc: '通用对话' },
+            { id: 'deepseek-coder', name: 'DeepSeek Coder', desc: '代码专用' }
+        ],
+        requiresApiKey: true
+    },
+    zhipu: {
+        name: '智谱 AI',
+        defaultEndpoint: 'https://open.bigmodel.cn/api/paas/v4',
+        defaultModel: 'glm-4-flash',
+        models: [
+            { id: 'glm-4', name: 'GLM-4', desc: '旗舰模型' },
+            { id: 'glm-4-flash', name: 'GLM-4-Flash', desc: '快速免费' },
+            { id: 'glm-4-plus', name: 'GLM-4-Plus', desc: '增强版' },
+            { id: 'glm-3-turbo', name: 'GLM-3-Turbo', desc: '经典版' }
+        ],
+        requiresApiKey: true
+    },
+    moonshot: {
+        name: 'Moonshot (Kimi)',
+        defaultEndpoint: 'https://api.moonshot.cn/v1',
+        defaultModel: 'moonshot-v1-8k',
+        models: [
+            { id: 'moonshot-v1-8k', name: 'Moonshot V1 8K', desc: '标准上下文' },
+            { id: 'moonshot-v1-32k', name: 'Moonshot V1 32K', desc: '长上下文' },
+            { id: 'moonshot-v1-128k', name: 'Moonshot V1 128K', desc: '超长上下文' }
+        ],
+        requiresApiKey: true
+    },
+    qwen: {
+        name: '通义千问',
+        defaultEndpoint: 'https://dashscope.aliyuncs.com/compatible-mode/v1',
+        defaultModel: 'qwen-turbo',
+        models: [
+            { id: 'qwen-turbo', name: 'Qwen Turbo', desc: '快速响应' },
+            { id: 'qwen-plus', name: 'Qwen Plus', desc: '平衡性能' },
+            { id: 'qwen-max', name: 'Qwen Max', desc: '最强性能' },
+            { id: 'qwen-long', name: 'Qwen Long', desc: '长上下文' }
         ],
         requiresApiKey: true
     },
@@ -102,37 +168,90 @@ class AIConfigManager {
         return normalized;
     }
 
+    normalizeOperatorConfig(config) {
+        const normalized = { ...defaultOperatorConfig, ...(config || {}) };
+        if (typeof normalized.provider === 'string') {
+            normalized.provider = normalized.provider.trim() || defaultOperatorConfig.provider;
+        }
+        if (typeof normalized.endpoint === 'string') {
+            normalized.endpoint = normalized.endpoint.trim().replace(/\/+$/, '');
+        }
+        if (typeof normalized.model === 'string') {
+            normalized.model = normalized.model.trim();
+        }
+        if (typeof normalized.apiKey === 'string') {
+            normalized.apiKey = normalized.apiKey.trim();
+        }
+        if (!normalized.endpoint) {
+            normalized.endpoint = providers[normalized.provider]?.defaultEndpoint || defaultOperatorConfig.endpoint;
+        }
+        return normalized;
+    }
+
     loadConfig() {
         try {
             if (fs.existsSync(this.configPath)) {
                 const data = fs.readFileSync(this.configPath, 'utf-8');
-                return this.normalizeConfig(JSON.parse(data));
+                const raw = JSON.parse(data);
+                return {
+                    global: {
+                        ...defaultConfig,
+                        ...(raw.global || {}),
+                        isFirstRun: raw.global?.isFirstRun ?? true,
+                        isFirstConnect: raw.global?.isFirstConnect ?? true,
+                        mirror: raw.global?.mirror || 'auto'
+                    },
+                    operators: raw.operators || {}
+                };
             }
         } catch (error) {
             console.warn('Failed to load AI config:', error);
         }
-        return this.normalizeConfig(defaultConfig);
+        return {
+            global: { ...defaultConfig },
+            operators: {}
+        };
     }
 
     saveConfig() {
         try {
             fs.mkdirSync(path.dirname(this.configPath), { recursive: true });
-            fs.writeFileSync(this.configPath, JSON.stringify(this.config, null, 2));
+            const data = JSON.stringify(this.config, null, 2);
+            fs.writeFileSync(this.configPath, data);
+            console.log('[AI Config] Config saved successfully to:', this.configPath);
+            console.log('[AI Config] Saved data:', data.substring(0, 500));
             return true;
         } catch (error) {
-            console.error('Failed to save AI config:', error);
+            console.error('[AI Config] Failed to save:', error);
             return false;
         }
     }
 
     getConfig() {
         this.config = this.loadConfig();
-        return { ...this.config };
+        return { ...this.config.global };
     }
 
     updateConfig(updates) {
-        this.config = this.normalizeConfig({ ...this.config, ...updates });
+        this.config.global = this.normalizeConfig({ ...this.config.global, ...updates });
         return this.saveConfig();
+    }
+
+    getOperatorConfig(operatorId) {
+        this.config = this.loadConfig();
+        const opConfig = this.config.operators[operatorId] || {};
+        return this.normalizeOperatorConfig(opConfig);
+    }
+
+    updateOperatorConfig(operatorId, updates) {
+        console.log(`[AI Config] Updating operator ${operatorId} with:`, updates);
+        this.config.operators[operatorId] = this.normalizeOperatorConfig({
+            ...(this.config.operators[operatorId] || {}),
+            ...updates
+        });
+        const result = this.saveConfig();
+        console.log(`[AI Config] Save result:`, result, 'Config path:', this.configPath);
+        return result;
     }
 
     hasModel(models, modelName) {
@@ -145,10 +264,13 @@ class AIConfigManager {
 
     async isOllamaServiceRunning() {
         try {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 3000);
             const response = await fetch('http://127.0.0.1:11434/api/tags', {
                 method: 'GET',
-                timeout: 3000
+                signal: controller.signal
             });
+            clearTimeout(timeoutId);
             return response.ok;
         } catch {
             return false;
@@ -199,15 +321,23 @@ class AIConfigManager {
 
     async listOllamaModels() {
         try {
+            // Use AbortController for timeout since Node.js fetch doesn't support timeout option
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 5000);
+            
             const response = await fetch('http://127.0.0.1:11434/api/tags', {
                 method: 'GET',
-                timeout: 5000
+                signal: controller.signal
             });
+            clearTimeout(timeoutId);
+            
             if (response.ok) {
                 const data = await response.json();
+                console.log('[AI Config] Ollama models fetched:', data.models);
                 return { success: true, models: data.models || [] };
             }
-        } catch {
+        } catch (error) {
+            console.log('[AI Config] Fetch error, falling back to CLI:', error.message);
             // Fall back to the CLI below when the local HTTP service is not ready.
         }
 
@@ -252,12 +382,23 @@ class AIConfigManager {
     async detectLocalServices() {
         const services = [];
 
+        // Helper for fetch with timeout
+        const fetchWithTimeout = async (url, options = {}, timeoutMs = 3000) => {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+            try {
+                const response = await fetch(url, { ...options, signal: controller.signal });
+                clearTimeout(timeoutId);
+                return response;
+            } catch (error) {
+                clearTimeout(timeoutId);
+                throw error;
+            }
+        };
+
         // Check Ollama
         try {
-            const response = await fetch('http://127.0.0.1:11434/api/tags', { 
-                method: 'GET',
-                timeout: 3000 
-            });
+            const response = await fetchWithTimeout('http://127.0.0.1:11434/api/tags', { method: 'GET' });
             if (response.ok) {
                 const data = await response.json();
                 services.push({
@@ -274,10 +415,7 @@ class AIConfigManager {
 
         // Check LM Studio
         try {
-            const response = await fetch('http://127.0.0.1:1234/v1/models', {
-                method: 'GET',
-                timeout: 3000
-            });
+            const response = await fetchWithTimeout('http://127.0.0.1:1234/v1/models', { method: 'GET' });
             if (response.ok) {
                 const data = await response.json();
                 services.push({
@@ -298,6 +436,20 @@ class AIConfigManager {
     // Test connection to a service
     async testConnection(config) {
         try {
+            // Helper function for fetch with timeout
+            const fetchWithTimeout = async (url, options = {}, timeoutMs = 5000) => {
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+                try {
+                    const response = await fetch(url, { ...options, signal: controller.signal });
+                    clearTimeout(timeoutId);
+                    return response;
+                } catch (error) {
+                    clearTimeout(timeoutId);
+                    throw error;
+                }
+            };
+
             if (config.provider === 'ollama') {
                 if (!config.model) {
                     return {
@@ -306,10 +458,7 @@ class AIConfigManager {
                         models: []
                     };
                 }
-                const response = await fetch(`${config.endpoint}/api/tags`, {
-                    method: 'GET',
-                    timeout: 5000
-                });
+                const response = await fetchWithTimeout(`${config.endpoint}/api/tags`, { method: 'GET' });
                 if (response.ok) {
                     const data = await response.json();
                     const models = data.models || [];
@@ -327,10 +476,7 @@ class AIConfigManager {
                     };
                 }
             } else if (config.provider === 'lmstudio') {
-                const response = await fetch(`${config.endpoint}/v1/models`, {
-                    method: 'GET',
-                    timeout: 5000
-                });
+                const response = await fetchWithTimeout(`${config.endpoint}/models`, { method: 'GET' });
                 if (response.ok) {
                     const data = await response.json();
                     return { 
@@ -339,18 +485,44 @@ class AIConfigManager {
                         models: data.data || []
                     };
                 }
-            } else if (config.provider === 'openai' || config.provider === 'custom') {
+            } else if (config.provider === 'anthropic') {
+                // Anthropic uses different API format
+                const headers = { 
+                    'Content-Type': 'application/json',
+                    'x-api-key': config.apiKey,
+                    'anthropic-version': '2023-06-01'
+                };
+                // Test with a simple message
+                const response = await fetchWithTimeout(`${config.endpoint}/messages`, {
+                    method: 'POST',
+                    headers,
+                    body: JSON.stringify({
+                        model: config.model,
+                        max_tokens: 10,
+                        messages: [{ role: 'user', content: 'Hi' }]
+                    })
+                }, 10000);
+                if (response.ok) {
+                    return { success: true, message: '连接成功' };
+                } else {
+                    const error = await response.json();
+                    return { success: false, message: error.error?.message || 'API Key 无效' };
+                }
+            } else {
+                // OpenAI-compatible APIs (openai, deepseek, zhipu, moonshot, qwen, custom)
                 const headers = { 'Content-Type': 'application/json' };
                 if (config.apiKey) {
                     headers['Authorization'] = `Bearer ${config.apiKey}`;
                 }
-                const response = await fetch(`${config.endpoint}/models`, {
+                const response = await fetchWithTimeout(`${config.endpoint}/models`, {
                     method: 'GET',
-                    headers,
-                    timeout: 5000
+                    headers
                 });
                 if (response.ok) {
                     return { success: true, message: '连接成功' };
+                } else {
+                    const error = await response.json().catch(() => ({}));
+                    return { success: false, message: error.error?.message || 'API Key 无效或端点错误' };
                 }
             }
             return { success: false, message: '无法连接到服务' };
@@ -519,14 +691,24 @@ class AIConfigManager {
 
     // Setup IPC handlers
     setupIPC() {
-        // Get current config
+        // Get current config (global)
         ipcMain.handle('ai-get-config', () => {
             return this.getConfig();
         });
 
-        // Update config
+        // Update config (global)
         ipcMain.handle('ai-update-config', (event, updates) => {
             return this.updateConfig(updates);
+        });
+
+        // Get operator-specific config
+        ipcMain.handle('ai-get-operator-config', (event, operatorId) => {
+            return this.getOperatorConfig(operatorId);
+        });
+
+        // Update operator-specific config
+        ipcMain.handle('ai-update-operator-config', (event, operatorId, updates) => {
+            return this.updateOperatorConfig(operatorId, updates);
         });
 
         // Detect local services

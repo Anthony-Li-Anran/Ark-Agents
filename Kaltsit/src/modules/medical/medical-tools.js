@@ -287,12 +287,12 @@ class MedicalTools {
         const results = [];
         
         try {
-            const wikiUrl = `https://zh.wikipedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(query + ' 医学')}&format=json&origin=*&srlimit=${maxResults}`;
+            const apiUrl = `https://cn.apihz.cn/api/zici/baikebaidu.php?id=88888888&key=88888888&words=${encodeURIComponent(query)}`;
             
             const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 10000);
+            const timeoutId = setTimeout(() => controller.abort(), 15000);
             
-            const response = await fetch(wikiUrl, {
+            const response = await fetch(apiUrl, {
                 signal: controller.signal
             });
             
@@ -301,21 +301,17 @@ class MedicalTools {
             if (response.ok) {
                 const data = await response.json();
                 
-                if (data.query && data.query.search && Array.isArray(data.query.search)) {
-                    for (const item of data.query.search) {
-                        if (item.snippet) {
-                            results.push({
-                                title: item.title,
-                                snippet: item.snippet.replace(/<[^>]*>/g, '').replace(/&quot;/g, '"'),
-                                source: '维基百科',
-                                type: 'wiki'
-                            });
-                        }
-                    }
+                if (data.code === 200 && data.msg) {
+                    results.push({
+                        title: query,
+                        snippet: data.msg.substring(0, 500),
+                        source: '百度百科',
+                        type: 'baike'
+                    });
                 }
             }
         } catch (error) {
-            console.error('[MedicalTools] Wiki search failed:', error.message);
+            console.error('[MedicalTools] Baike search failed:', error.message);
         }
         
         if (results.length === 0) {

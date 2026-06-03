@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>企业微信配置 - Ark Agents</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        
+        .container {
+            background: white;
+            border-radius: 16px;
+            padding: 40px;
+            width: 100%;
+            max-width: 600px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .header h1 {
+            color: #333;
+            font-size: 24px;
+            margin-bottom: 8px;
+        }
+        
+        .header p {
+            color: #666;
+            font-size: 14px;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: #333;
+            font-weight: 500;
+            font-size: 14px;
+        }
+        
+        .form-group input {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+        }
+        
+        .form-group input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        .form-group input::placeholder {
+            color: #aaa;
+        }
+        
+        .toggle-group {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 20px;
+            padding: 16px;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+        
+        .toggle-group label {
+            font-weight: 500;
+            color: #333;
+        }
+        
+        .toggle-switch {
+            position: relative;
+            width: 50px;
+            height: 26px;
+        }
+        
+        .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+        
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #ccc;
+            transition: .4s;
+            border-radius: 26px;
+        }
+        
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 18px;
+            width: 18px;
+            left: 4px;
+            bottom: 4px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+        
+        input:checked + .slider {
+            background-color: #667eea;
+        }
+        
+        input:checked + .slider:before {
+            transform: translateX(24px);
+        }
+        
+        .agent-config {
+            margin-top: 20px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+        
+        .agent-config h3 {
+            margin-bottom: 16px;
+            color: #333;
+            font-size: 16px;
+        }
+        
+        .agent-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 12px;
+            padding: 12px;
+            background: white;
+            border-radius: 6px;
+        }
+        
+        .agent-item:last-child {
+            margin-bottom: 0;
+        }
+        
+        .agent-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        
+        .agent-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+        }
+        
+        .agent-icon.amiya { background: #ffe4e1; }
+        .agent-icon.texas { background: #e6f3ff; }
+        .agent-icon.kaltsit { background: #f0f8e6; }
+        
+        .agent-details h4 {
+            color: #333;
+            font-size: 14px;
+            margin-bottom: 2px;
+        }
+        
+        .agent-details p {
+            color: #666;
+            font-size: 12px;
+        }
+        
+        .button-group {
+            display: flex;
+            gap: 12px;
+            margin-top: 30px;
+        }
+        
+        .btn {
+            flex: 1;
+            padding: 14px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4);
+        }
+        
+        .btn-secondary {
+            background: #f0f0f0;
+            color: #333;
+        }
+        
+        .btn-secondary:hover {
+            background: #e0e0e0;
+        }
+        
+        .status-message {
+            margin-top: 16px;
+            padding: 12px;
+            border-radius: 8px;
+            text-align: center;
+            font-size: 14px;
+            display: none;
+        }
+        
+        .status-message.success {
+            background: #d4edda;
+            color: #155724;
+            display: block;
+        }
+        
+        .status-message.error {
+            background: #f8d7da;
+            color: #721c24;
+            display: block;
+        }
+        
+        .help-text {
+            margin-top: 20px;
+            padding: 16px;
+            background: #e3f2fd;
+            border-radius: 8px;
+            font-size: 13px;
+            color: #1976d2;
+            line-height: 1.6;
+        }
+        
+        .help-text h4 {
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+        
+        .help-text ol {
+            margin-left: 16px;
+        }
+        
+        .help-text li {
+            margin-bottom: 4px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>企业微信配置</h1>
+            <p>配置企业微信集成，让干员可以通过企业微信与用户交互</p>
+        </div>
+        
+        <div class="toggle-group">
+            <label>启用企业微信集成</label>
+            <label class="toggle-switch">
+                <input type="checkbox" id="enabled">
+                <span class="slider"></span>
+            </label>
+        </div>
+        
+        <div class="form-group">
+            <label for="corpId">企业ID (CorpID)</label>
+            <input type="text" id="corpId" placeholder="请输入企业微信的CorpID">
+        </div>
+        
+        <div class="form-group">
+            <label for="agentId">应用ID (AgentID)</label>
+            <input type="text" id="agentId" placeholder="请输入应用的AgentID">
+        </div>
+        
+        <div class="form-group">
+            <label for="secret">应用密钥 (Secret)</label>
+            <input type="password" id="secret" placeholder="请输入应用的Secret">
+        </div>
+        
+        <div class="form-group">
+            <label for="token">Token (可选)</label>
+            <input type="text" id="token" placeholder="用于消息加解密的Token">
+        </div>
+        
+        <div class="form-group">
+            <label for="encodingAESKey">EncodingAESKey (可选)</label>
+            <input type="text" id="encodingAESKey" placeholder="用于消息加解密的EncodingAESKey">
+        </div>
+        
+        <div class="form-group">
+            <label for="webhookPort">Webhook端口</label>
+            <input type="number" id="webhookPort" value="3000" placeholder="默认3000">
+        </div>
+        
+        <div class="agent-config">
+            <h3>干员配置</h3>
+            <div class="agent-item">
+                <div class="agent-info">
+                    <div class="agent-icon amiya">🐰</div>
+                    <div class="agent-details">
+                        <h4>阿米娅</h4>
+                        <p>通用对话与任务管理</p>
+                    </div>
+                </div>
+                <label class="toggle-switch">
+                    <input type="checkbox" id="amiyaEnabled" checked>
+                    <span class="slider"></span>
+                </label>
+            </div>
+            
+            <div class="agent-item">
+                <div class="agent-info">
+                    <div class="agent-icon texas">🐺</div>
+                    <div class="agent-details">
+                        <h4>德克萨斯</h4>
+                        <p>文件整理专家</p>
+                    </div>
+                </div>
+                <label class="toggle-switch">
+                    <input type="checkbox" id="texasEnabled">
+                    <span class="slider"></span>
+                </label>
+            </div>
+            
+            <div class="agent-item">
+                <div class="agent-info">
+                    <div class="agent-icon kaltsit">🐱</div>
+                    <div class="agent-details">
+                        <h4>凯尔希</h4>
+                        <p>医疗咨询顾问</p>
+                    </div>
+                </div>
+                <label class="toggle-switch">
+                    <input type="checkbox" id="kaltsitEnabled">
+                    <span class="slider"></span>
+                </label>
+            </div>
+        </div>
+        
+        <div class="button-group">
+            <button class="btn btn-secondary" onclick="testConnection()">测试连接</button>
+            <button class="btn btn-primary" onclick="saveConfig()">保存配置</button>
+        </div>
+        
+        <div class="status-message" id="statusMessage"></div>
+        
+        <div class="help-text">
+            <h4>配置说明</h4>
+            <ol>
+                <li>登录企业微信管理后台 (work.weixin.qq.com)</li>
+                <li>在"应用管理"中创建自建应用</li>
+                <li>获取 CorpID、AgentID 和 Secret</li>
+                <li>在应用详情页设置接收消息的 Webhook URL</li>
+                <li>配置完成后，用户可以通过企业微信与干员对话</li>
+            </ol>
+        </div>
+    </div>
+    
+    <script>
+        const { ipcRenderer } = require('electron');
+        
+        // Load existing config
+        async function loadConfig() {
+            const config = await ipcRenderer.invoke('wecom-get-config');
+            
+            document.getElementById('enabled').checked = config.enabled;
+            document.getElementById('corpId').value = config.corpId || '';
+            document.getElementById('agentId').value = config.agentId || '';
+            document.getElementById('secret').value = config.secret || '';
+            document.getElementById('token').value = config.token || '';
+            document.getElementById('encodingAESKey').value = config.encodingAESKey || '';
+            document.getElementById('webhookPort').value = config.webhookPort || 3000;
+            
+            if (config.agents) {
+                document.getElementById('amiyaEnabled').checked = config.agents.amiya?.enabled ?? true;
+                document.getElementById('texasEnabled').checked = config.agents.texas?.enabled ?? false;
+                document.getElementById('kaltsitEnabled').checked = config.agents.kaltsit?.enabled ?? false;
+            }
+        }
+        
+        async function saveConfig() {
+            const config = {
+                enabled: document.getElementById('enabled').checked,
+                corpId: document.getElementById('corpId').value.trim(),
+                agentId: document.getElementById('agentId').value.trim(),
+                secret: document.getElementById('secret').value.trim(),
+                token: document.getElementById('token').value.trim(),
+                encodingAESKey: document.getElementById('encodingAESKey').value.trim(),
+                webhookPort: parseInt(document.getElementById('webhookPort').value) || 3000,
+                agents: {
+                    amiya: { enabled: document.getElementById('amiyaEnabled').checked },
+                    texas: { enabled: document.getElementById('texasEnabled').checked },
+                    kaltsit: { enabled: document.getElementById('kaltsitEnabled').checked }
+                }
+            };
+            
+            const result = await ipcRenderer.invoke('wecom-update-config', config);
+            
+            if (result) {
+                showStatus('配置保存成功！', 'success');
+            } else {
+                showStatus('配置保存失败，请重试。', 'error');
+            }
+        }
+        
+        async function testConnection() {
+            showStatus('正在测试连接...', 'success');
+            
+            const result = await ipcRenderer.invoke('wecom-test-connection');
+            
+            if (result.success) {
+                showStatus(`连接成功！应用名称：${result.agentName}`, 'success');
+            } else {
+                showStatus(`连接失败：${result.error}`, 'error');
+            }
+        }
+        
+        function showStatus(message, type) {
+            const statusEl = document.getElementById('statusMessage');
+            statusEl.textContent = message;
+            statusEl.className = `status-message ${type}`;
+            
+            setTimeout(() => {
+                statusEl.className = 'status-message';
+            }, 5000);
+        }
+        
+        // Load config on startup
+        loadConfig();
+    </script>
+</body>
+</html>
