@@ -3,6 +3,12 @@
  * Retrieval-Augmented Generation engine using Ollama embeddings
  */
 
+let _createAIProvider = null;
+
+function setCreateAIProvider(factory) {
+    _createAIProvider = factory;
+}
+
 class RAGEngine {
     constructor({ documentStore, aiConfigManager, operatorId = 'muelsyse' }) {
         this.documentStore = documentStore;
@@ -52,68 +58,27 @@ class RAGEngine {
     }
 
     async generateAnswer(query, context, systemPrompt) {
+        if (!_createAIProvider) {
+            throw new Error('AI Provider factory not set. Call setCreateAIProvider() first.');
+        }
+
         const config = this.aiConfigManager.getOperatorConfig(this.operatorId);
-        const endpoint = config.endpoint || 'http://127.0.0.1:11434';
-        const model = config.model;
-        
-        if (!model) {
-            throw new Error('No AI model configured for Muelsyse');
-        }
-        
-        const fullPrompt = context 
-            ? `${systemPrompt}\n\n【参考资料】\n${context}\n\n【用户问题】\n${query}\n\n请基于参考资料回答用户问题，如果参考资料中有相关信息，请标注来源。如果参考资料中没有相关信息，请根据你的知识回答，但要说明这不是来自文档。`
-            : `${systemPrompt}\n\n【用户问题】\n${query}\n\n注意：没有找到相关的参考资料，请根据你的知识回答。`;
-        
-        console.log(`[RAGEngine] Generating answer using model: ${model}`);
-        
-        let apiUrl;
-        let requestBody;
-        
-        if (config.provider === 'ollama') {
-            apiUrl = `${endpoint}/api/generate`;
-            requestBody = { 
-                model, 
-                prompt: fullPrompt, 
-                stream: false,
-                options: {
-                    temperature: 0.7,
-                    top_p: 0.9
-                }
-            };
-        } else {
-            apiUrl = `${endpoint}/v1/chat/completions`;
-            requestBody = {
-                model,
-                messages: [
-                    { role: 'system', content: systemPrompt },
-                    { role: 'user', content: context ? `参考资料：\n${context}\n\n问题：${query}` : query }
-                ],
-                stream: false,
-                temperature: 0.7
-            };
-        }
-        
-        const headers = { 'Content-Type': 'application/json' };
-        if (config.apiKey) {
-            headers['Authorization'] = `Bearer ${config.apiKey}`;
-        }
-        
-        const response = await fetch(apiUrl, {
-            method: 'POST',
-            headers,
-            body: JSON.stringify(requestBody)
-        });
-        
-        if (!response.ok) {
-            const errorText = await response.text();
-            throw new Error(`AI service error: ${response.status} - ${errorText}`);
-        }
-        
-        const data = await response.json();
-        const answer = config.provider === 'ollama' ? data.response : data.choices?.[0]?.message?.content;
-        
+        const provider = _createAIProvider(config);
+
+        const messages = [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: context
+                ? `参考资料：\n${context}\n\n问题：${query}\n\n请基于参考资料回答用户问题，如果参考资料中有相关信息，请标注来源。如果参考资料中没有相关信息，请根据你的知识回答，但要说明这不是来自文档。`
+                : `${query}\n\n注意：没有找到相关的参考资料，请根据你的知识回答。`
+            }
+        ];
+
+        console.log(`[RAGEngine] Generating answer using model: ${config.model}`);
+
+        const answer = await provider.chat(messages, { temperature: 0.7, topP: 0.9 });
+
         console.log(`[RAGEngine] Generated answer (${answer.length} chars)`);
-        
+
         return answer;
     }
 
@@ -149,71 +114,39 @@ class RAGEngine {
     }
 
     async summarizeDocument(docId, systemPrompt) {
+        if (!_createAIProvider) {
+            throw new Error('AI Provider factory not set. Call setCreateAIProvider() first.');
+        }
+
         const doc = this.documentStore.getDocument(docId);
         if (!doc) {
             throw new Error(`Document not found: ${docId}`);
         }
-        
+
         const config = this.aiConfigManager.getOperatorConfig(this.operatorId);
-        const endpoint = config.endpoint || 'http://127.0.0.1:11434';
-        const model = config.model;
-        
-        if (!model) {
-            throw new Error('No AI model configured for Muelsyse');
-        }
-        
-        const prompt = `${systemPrompt}\n\n请总结以下文档内容：\n\n【文档名称】${doc.fileName}\n\n【文档内容】\n${doc.text.substring(0, 8000)}`;
-        
-        const response = await fetch(`${endpoint}/api/generate`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                model,
-                prompt,
-                stream: false
-            })
-        });
-        
-        if (!response.ok) {
-            throw new Error(`AI service error: ${response.status}`);
-        }
-        
-        const data = await response.json();
-        return data.response;
+        const provider = _createAIProvider(config);
+
+        const prompt = `请总结以下文档内容：\n\n【文档名称】${doc.fileName}\n\n【文档内容】\n${doc.text.substring(0, 8000)}`;
+
+        return provider.complete(prompt, { systemPrompt });
     }
 
     async generateFlashcards(content, systemPrompt, count = 10) {
+        if (!_createAIProvider) {
+            throw new Error('AI Provider factory not set. Call setCreateAIProvider() first.');
+        }
+
         const config = this.aiConfigManager.getOperatorConfig(this.operatorId);
-        const endpoint = config.endpoint || 'http://127.0.0.1:11434';
-        const model = config.model;
-        
-        if (!model) {
-            throw new Error('No AI model configured for Muelsyse');
-        }
-        
-        const prompt = `${systemPrompt}\n\n请基于以下内容生成${count}个学习闪卡，每个闪卡包含问题和答案。以JSON数组格式返回：\n[{"question": "问题", "answer": "答案"}]\n\n【内容】\n${content.substring(0, 6000)}`;
-        
-        const response = await fetch(`${endpoint}/api/generate`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                model,
-                prompt,
-                stream: false,
-                format: 'json'
-            })
-        });
-        
-        if (!response.ok) {
-            throw new Error(`AI service error: ${response.status}`);
-        }
-        
-        const data = await response.json();
-        
+        const provider = _createAIProvider(config);
+
+        const prompt = `请基于以下内容生成${count}个学习闪卡，每个闪卡包含问题和答案。以JSON数组格式返回：\n[{"question": "问题", "answer": "答案"}]\n\n【内容】\n${content.substring(0, 6000)}`;
+
+        const response = await provider.complete(prompt, { systemPrompt });
+
         try {
-            return JSON.parse(data.response);
+            return JSON.parse(response);
         } catch {
-            const jsonMatch = data.response.match(/\[[\s\S]*\]/);
+            const jsonMatch = response.match(/\[[\s\S]*\]/);
             if (jsonMatch) {
                 return JSON.parse(jsonMatch[0]);
             }
@@ -222,37 +155,21 @@ class RAGEngine {
     }
 
     async generateQuiz(content, systemPrompt, count = 5) {
+        if (!_createAIProvider) {
+            throw new Error('AI Provider factory not set. Call setCreateAIProvider() first.');
+        }
+
         const config = this.aiConfigManager.getOperatorConfig(this.operatorId);
-        const endpoint = config.endpoint || 'http://127.0.0.1:11434';
-        const model = config.model;
-        
-        if (!model) {
-            throw new Error('No AI model configured for Muelsyse');
-        }
-        
-        const prompt = `${systemPrompt}\n\n请基于以下内容生成${count}道选择题测试题。以JSON数组格式返回：\n[{"question": "问题", "options": ["A选项", "B选项", "C选项", "D选项"], "correct": 0, "explanation": "答案解析"}]\n其中correct是正确选项的索引（0-3）。\n\n【内容】\n${content.substring(0, 6000)}`;
-        
-        const response = await fetch(`${endpoint}/api/generate`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                model,
-                prompt,
-                stream: false,
-                format: 'json'
-            })
-        });
-        
-        if (!response.ok) {
-            throw new Error(`AI service error: ${response.status}`);
-        }
-        
-        const data = await response.json();
-        
+        const provider = _createAIProvider(config);
+
+        const prompt = `请基于以下内容生成${count}道选择题测试题。以JSON数组格式返回：\n[{"question": "问题", "options": ["A选项", "B选项", "C选项", "D选项"], "correct": 0, "explanation": "答案解析"}]\n其中correct是正确选项的索引（0-3）。\n\n【内容】\n${content.substring(0, 6000)}`;
+
+        const response = await provider.complete(prompt, { systemPrompt });
+
         try {
-            return JSON.parse(data.response);
+            return JSON.parse(response);
         } catch {
-            const jsonMatch = data.response.match(/\[[\s\S]*\]/);
+            const jsonMatch = response.match(/\[[\s\S]*\]/);
             if (jsonMatch) {
                 return JSON.parse(jsonMatch[0]);
             }
@@ -269,4 +186,4 @@ class RAGEngine {
     }
 }
 
-module.exports = { RAGEngine };
+module.exports = { RAGEngine, setCreateAIProvider };

@@ -14,7 +14,8 @@ const MODEL_NAMES = {
     amiya: 'build_char_002_amiya',
     texas: 'build_char_102_texas',
     kalts: 'build_char_003_kalts',
-    muelsyse: 'build_char_249_mlyss'
+    muelsyse: 'build_char_249_mlyss',
+    svrash: 'build_char_172_svrash'
 };
 
 // Legacy exports for backward compatibility
@@ -47,6 +48,15 @@ const TEXAS_SLEEP_ANIMATIONS = {
     'Relax': { next: ['Sleep'], weight: [1] },
     'Relax_Idle': { next: ['Sleep'], weight: [1] },
     'Sleep': { next: ['Sleep'], weight: [1] }
+};
+
+// Svrash animations
+const SVRASH_ANIMATIONS = {
+    'Default': { next: ['Default'], weight: [1] }
+};
+
+const SVRASH_SLEEP_ANIMATIONS = {
+    'Default': { next: ['Default'], weight: [1] }
 };
 
 // Character configurations
@@ -102,6 +112,19 @@ const CHARACTER_CONFIGS = {
         },
         moveAnimation: 'Move',
         interactAnimation: 'Interact'
+    },
+    svrash: {
+        id: 'svrash',
+        name: 'Svrash',
+        modelFolder: '172_svrash',
+        modelName: MODEL_NAMES.svrash,
+        width: MODEL_WIDTH,
+        animations: {
+            day: SVRASH_ANIMATIONS,
+            sleep: SVRASH_SLEEP_ANIMATIONS
+        },
+        moveAnimation: 'Move',
+        interactAnimation: 'Interact'
     }
 };
 
@@ -112,10 +135,16 @@ const FUNCTION_SUBMENU_ITEMS = [
     { id: 'reminder', label: 'Reminder' }
 ];
 
+// Submenu items for Link button
+const LINK_SUBMENU_ITEMS = [
+    { id: 'dingtalk-setup', label: 'DingTalk Setup' },
+    { id: 'svrash-dingtalk', label: 'Svrash DingTalk' }
+];
+
 // Context menu items for Amiya
 const CONTEXT_MENU_ITEMS = [
     { id: 'chat', label: 'Chat' },
-    { id: 'link', label: 'Link' },
+    { id: 'link', label: 'Link', children: LINK_SUBMENU_ITEMS },
     { id: 'function', label: 'Function', children: FUNCTION_SUBMENU_ITEMS },
     { id: 'settings', label: 'Settings' },
     { id: 'operators', label: 'Operators' },
@@ -137,7 +166,13 @@ const KALTSIT_CONTEXT_MENU_ITEMS = [
 // Context menu items for Muelsyse (learning assistant)
 const MUELSYSE_CONTEXT_MENU_ITEMS = [
     { id: 'learning-assistant', label: 'Learning Assistant' },
-    { id: 'selection-mode', label: 'Selection Mode' },
+    { id: 'exit', label: 'Exit' }
+];
+
+// Context menu items for Svrash
+const SVRASH_CONTEXT_MENU_ITEMS = [
+    { id: 'finance-assistant', label: 'Finance Assistant' },
+    { id: 'data-analysis', label: 'Data Analysis' },
     { id: 'exit', label: 'Exit' }
 ];
 
@@ -158,10 +193,14 @@ module.exports = {
     TEXAS_DAY_ANIMATIONS,
     TEXAS_SLEEP_ANIMATIONS,
     TEXAS_ANIMATIONS,
+    SVRASH_ANIMATIONS,
+    SVRASH_SLEEP_ANIMATIONS,
     CHARACTER_CONFIGS,
     CONTEXT_MENU_ITEMS,
     FUNCTION_SUBMENU_ITEMS,
+    LINK_SUBMENU_ITEMS,
     TEXAS_CONTEXT_MENU_ITEMS,
     KALTSIT_CONTEXT_MENU_ITEMS,
-    MUELSYSE_CONTEXT_MENU_ITEMS
+    MUELSYSE_CONTEXT_MENU_ITEMS,
+    SVRASH_CONTEXT_MENU_ITEMS
 };

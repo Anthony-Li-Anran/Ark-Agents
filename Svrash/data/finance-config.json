@@ -1,0 +1,13 @@
+{
+  "pushEnabled": true,
+  "pushSchedule": {
+    "open": "09:15",
+    "midday": [
+      "11:30",
+      "14:48"
+    ],
+    "close": "15:05"
+  },
+  "thresholdAlertsEnabled": true,
+  "checkIntervalMinutes": 5
+}

@@ -38,6 +38,24 @@ const defaultConfig = {
             accessToken: '',
             secret: '',
             welcomeMessage: '凯尔希。健康相关问题可以问我。'
+        },
+        svrash: {
+            enabled: false,
+            appKey: '',
+            appSecret: '',
+            webhookUrl: '',
+            accessToken: '',
+            secret: '',
+            welcomeMessage: '银灰金融助手已启用。我将为您提供市场动态和股票提醒。',
+            watchlist: [],
+            pushEnabled: true,
+            pushSchedule: {
+                open: '09:15',
+                midday: ['11:30', '14:00'],
+                close: '15:05'
+            },
+            thresholdAlertsEnabled: true,
+            checkIntervalMinutes: 5
         }
     }
 };
@@ -83,7 +101,8 @@ class DingTalkConfigManager {
                     agents: {
                         amiya: { ...defaultConfig.agents.amiya, ...loaded.agents?.amiya },
                         texas: { ...defaultConfig.agents.texas, ...loaded.agents?.texas },
-                        kaltsit: { ...defaultConfig.agents.kaltsit, ...loaded.agents?.kaltsit }
+                        kaltsit: { ...defaultConfig.agents.kaltsit, ...loaded.agents?.kaltsit },
+                        svrash: { ...defaultConfig.agents.svrash, ...loaded.agents?.svrash }
                     }
                 };
             }

@@ -47,11 +47,13 @@ const {
     TEXAS_CONTEXT_MENU_ITEMS,
     KALTSIT_CONTEXT_MENU_ITEMS,
     MUELSYSE_CONTEXT_MENU_ITEMS,
+    SVRASH_CONTEXT_MENU_ITEMS,
+    LINK_SUBMENU_ITEMS,
     CHARACTER_CONFIGS,
     MODEL_NAMES
 } = require(path.join(scriptDir, '..', 'shared', 'constants'));
 
-const { AmiyaCharacter, TexasCharacter, KaltsitCharacter, MuelsyseCharacter } = require(path.join(scriptDir, '..', 'characters'));
+const { AmiyaCharacter, TexasCharacter, KaltsitCharacter, MuelsyseCharacter, SvrashCharacter } = require(path.join(scriptDir, '..', 'characters'));
 const { DragHandler } = require(path.join(scriptDir, 'drag-handler'));
 const chatUI = require(path.join(scriptDir, 'chat-ui'));
 const contextMenu = require(path.join(scriptDir, 'context-menu'));
@@ -79,10 +81,8 @@ let chatActivationInProgress = false;
 let contextMenuTargetId = null;
 let texasSkin = 'default';
 let fileManagementMode = false;
-let selectionMode = false;
-let selectionButton = null;
-let selectionPanel = null;
-let selectionHandler = null;
+let currentOperator = null;
+
 
 const TEXAS_SKIN_OPTIONS = [
     {
@@ -463,6 +463,8 @@ function showContextMenu(x, y, charId, bounds) {
         menuItems = KALTSIT_CONTEXT_MENU_ITEMS;
     } else if (charId === 'muelsyse') {
         menuItems = MUELSYSE_CONTEXT_MENU_ITEMS;
+    } else if (charId === 'svrash') {
+        menuItems = SVRASH_CONTEXT_MENU_ITEMS;
     } else {
         menuItems = CONTEXT_MENU_ITEMS;
     }
@@ -516,7 +518,20 @@ async function onContextMenuAction(actionId) {
         return;
     }
     if (actionId === 'link') {
+        contextMenu.showSubmenu(
+            { id: 'link', label: 'Link' },
+            LINK_SUBMENU_ITEMS,
+            onContextMenuAction
+        );
+        return;
+    }
+    if (actionId === 'dingtalk-setup') {
         ipcRenderer.send('open-dingtalk-setup');
+        hideContextMenu();
+        return;
+    }
+    if (actionId === 'svrash-dingtalk') {
+        ipcRenderer.send('open-svrash-dingtalk-setup');
         hideContextMenu();
         return;
     }
@@ -562,15 +577,22 @@ async function onContextMenuAction(actionId) {
         ipcRenderer.send('open-muelsyse-learning');
         return;
     }
-    if (actionId === 'selection-mode') {
+    if (actionId === 'close-svrash') {
+        hideOperatorCharacter('svrash');
         hideContextMenu();
-        if (selectionMode) {
-            disableSelectionMode();
-        } else {
-            enableSelectionMode();
-        }
         return;
     }
+    if (actionId === 'data-analysis') {
+        hideContextMenu();
+        ipcRenderer.send('open-external-link', 'https://autostat.cc/demo');
+        return;
+    }
+    if (actionId === 'finance-assistant') {
+        hideContextMenu();
+        ipcRenderer.send('open-svrash-finance');
+        return;
+    }
+
 }
 
 function buildTexasSkinSwitcher() {
@@ -649,7 +671,8 @@ function showOperatorPanel() {
     const operators = [
         { id: 'texas', name: 'Texas', checked: selectedOperators.has('texas') },
         { id: 'kalts', name: "Kal'tsit", checked: selectedOperators.has('kalts') },
-        { id: 'muelsyse', name: 'Muelsyse', checked: selectedOperators.has('muelsyse') }
+        { id: 'muelsyse', name: 'Muelsyse', checked: selectedOperators.has('muelsyse') },
+        { id: 'svrash', name: 'Svrash', checked: selectedOperators.has('svrash') }
     ];
 
     operatorPanel.show({
@@ -729,6 +752,9 @@ async function showOperatorCharacter(operatorId, overrideOptions = {}) {
         case 'muelsyse':
             CharacterClass = MuelsyseCharacter;
             break;
+        case 'svrash':
+            CharacterClass = SvrashCharacter;
+            break;
         default:
             console.error(`[Renderer] Unknown character class for: ${operatorId}`);
             return false;
@@ -743,26 +769,43 @@ async function showOperatorCharacter(operatorId, overrideOptions = {}) {
 
     console.log(`[Renderer] Creating ${operatorId} at position (${startX}, ${startY})`);
 
+    // 为非Texas角色构建modelPath和modelName
+    let modelPath = modelsBasePath;
+    let modelName = null;
+    if (operatorId !== 'texas' && config) {
+        modelPath = path.join(modelsBasePath, config.modelFolder);
+        modelName = config.modelName;
+    }
+    console.log(`[Renderer] Model path for ${operatorId}:`, modelPath);
+    console.log(`[Renderer] Model name for ${operatorId}:`, modelName);
+
     const char = new CharacterClass({
         app,
         screenWidth,
         screenHeight,
         modelsBasePath,
+        modelPath,
+        modelName,
         startX,
         startY,
         ...overrideOptions
     });
 
+    console.log(`[Renderer] Character class:`, CharacterClass.name);
+    console.log(`[Renderer] Calling char.load() for ${operatorId}...`);
     try {
         await char.load();
+        console.log(`[Renderer] char.load() completed for ${operatorId}`);
 
         char.show();
         characters[operatorId] = char;
         selectedOperators.add(operatorId);
+        console.log(`[Renderer] Successfully loaded ${operatorId}`);
 
         return true;
     } catch (error) {
         console.error(`[Renderer] Failed to load ${operatorId}:`, error.message);
+        console.error(`[Renderer] Error stack:`, error.stack);
         return false;
     }
 }
@@ -988,8 +1031,10 @@ function updateAIBubblePosition() {
         targetChar = characters.texas;
     } else if (kaltsitChatVisible && characters.kalts) {
         targetChar = characters.kalts;
+    } else if (currentOperator === 'muelsyse' && characters.muelsyse) {
+        targetChar = characters.muelsyse;
     }
-    
+
     if (!targetChar) return;
 
     const bounds = targetChar.getBounds();
@@ -1036,8 +1081,10 @@ function updateLoadingSpinnerPosition() {
         targetChar = characters.texas;
     } else if (kaltsitChatVisible && characters.kalts) {
         targetChar = characters.kalts;
+    } else if (currentOperator === 'muelsyse' && characters.muelsyse) {
+        targetChar = characters.muelsyse;
     }
-    
+
     if (!targetChar) return;
 
     const bounds = targetChar.getBounds();
@@ -1353,160 +1400,7 @@ async function sendKaltsitMessage(message) {
     }
 }
 
-function initSelectionMode() {
-    if (selectionHandler) return;
-    
-    const { SelectionHandler } = require(path.join(scriptDir, '..', '..', 'Muelsyse', 'src', 'modules', 'selection', 'selection-handler'));
-    selectionHandler = new SelectionHandler();
-    selectionHandler.onSelection = showSelectionButton;
-}
 
-function enableSelectionMode() {
-    if (!selectionHandler) {
-        initSelectionMode();
-    }
-    selectionHandler.enable();
-    selectionMode = true;
-    
-    if (characters.muelsyse) {
-        showAIBubble('划词模式已开启，选中任意文本即可提问', false, 3000);
-    }
-}
-
-function disableSelectionMode() {
-    if (selectionHandler) {
-        selectionHandler.disable();
-    }
-    selectionMode = false;
-    hideSelectionButton();
-    hideSelectionPanel();
-}
-
-function showSelectionButton(selection) {
-    hideSelectionButton();
-    
-    selectionButton = document.createElement('button');
-    selectionButton.className = 'selection-button';
-    selectionButton.textContent = '问缪缪';
-    selectionButton.onclick = () => showSelectionPanel(selection);
-    
-    const x = selection.rect.left + selection.rect.width / 2;
-    const y = selection.rect.top - 10;
-    
-    selectionButton.style.left = `${Math.max(10, Math.min(screenWidth - 80, x - 30))}px`;
-    selectionButton.style.top = `${Math.max(10, y - 40)}px`;
-    
-    document.body.appendChild(selectionButton);
-    
-    setTimeout(() => {
-        if (selectionButton) {
-            hideSelectionButton();
-        }
-    }, 5000);
-}
-
-function hideSelectionButton() {
-    if (selectionButton) {
-        selectionButton.remove();
-        selectionButton = null;
-    }
-}
-
-function showSelectionPanel(selection) {
-    hideSelectionButton();
-    
-    selectionPanel = document.createElement('div');
-    selectionPanel.className = 'selection-panel';
-    selectionPanel.innerHTML = `
-        <div class="selection-panel-header">
-            <span>向缪缪提问</span>
-            <button class="selection-panel-close" onclick="hideSelectionPanel()">✕</button>
-        </div>
-        <div class="selection-panel-content">
-            <div class="selection-text">"${selection.text.length > 100 ? selection.text.slice(0, 100) + '...' : selection.text}"</div>
-            <textarea class="selection-input" placeholder="补充问题（可选）..."></textarea>
-            <button class="selection-send-btn">发送</button>
-        </div>
-    `;
-    
-    const x = selection.rect.left;
-    const y = selection.rect.bottom + 10;
-    
-    selectionPanel.style.left = `${Math.max(10, Math.min(screenWidth - 320, x))}px`;
-    selectionPanel.style.top = `${Math.min(screenHeight - 200, y)}px`;
-    
-    document.body.appendChild(selectionPanel);
-    
-    const input = selectionPanel.querySelector('.selection-input');
-    input.focus();
-    
-    input.addEventListener('keypress', (e) => {
-        if (e.key === 'Enter' && !e.shiftKey) {
-            e.preventDefault();
-            sendSelectionQuestion(selection.text, input.value);
-        }
-    });
-    
-    selectionPanel.querySelector('.selection-send-btn').onclick = () => {
-        sendSelectionQuestion(selection.text, input.value);
-    };
-    
-    document.addEventListener('keydown', handleSelectionEscape);
-    
-    setTimeout(() => {
-        document.addEventListener('click', handleSelectionClickOutside);
-    }, 100);
-}
-
-function hideSelectionPanel() {
-    if (selectionPanel) {
-        selectionPanel.remove();
-        selectionPanel = null;
-    }
-    document.removeEventListener('keydown', handleSelectionEscape);
-    document.removeEventListener('click', handleSelectionClickOutside);
-}
-
-function handleSelectionEscape(e) {
-    if (e.key === 'Escape') {
-        hideSelectionPanel();
-    }
-}
-
-function handleSelectionClickOutside(e) {
-    if (selectionPanel && !selectionPanel.contains(e.target) && !selectionButton?.contains(e.target)) {
-        hideSelectionPanel();
-    }
-}
-
-async function sendSelectionQuestion(selectedText, additionalQuestion) {
-    hideSelectionPanel();
-    
-    const question = additionalQuestion 
-        ? `${additionalQuestion}\n\n上下文：${selectedText}`
-        : `请解释：${selectedText}`;
-    
-    showLoadingSpinner();
-    
-    try {
-        const searchResult = await ipcRenderer.invoke('muelsyse-search-documents', selectedText, 3, 0.5);
-        
-        let answer;
-        if (searchResult && searchResult.length > 0) {
-            const qaResult = await ipcRenderer.invoke('muelsyse-qa', question, 'selection');
-            answer = qaResult.answer;
-        } else {
-            const result = await ipcRenderer.invoke('ollama-generate', question);
-            answer = result.response;
-        }
-        
-        hideLoadingSpinner();
-        showAIBubble(answer, false, 10000);
-    } catch (error) {
-        hideLoadingSpinner();
-        showAIBubble('抱歉，处理问题时出错了：' + error.message, true, 5000);
-    }
-}
 
 document.addEventListener('DOMContentLoaded', () => {
     initCSS();

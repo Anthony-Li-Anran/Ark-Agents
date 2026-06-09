@@ -1,0 +1,975 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>银灰 - 金融助手配置</title>
+    <link rel="stylesheet" href="../../../Amiya/src/views/styles/dashboard.css">
+    <style>
+        :root {
+            --background: 220 15% 8%;
+            --foreground: 0 0% 95%;
+            --card: 220 15% 10%;
+            --card-foreground: 0 0% 95%;
+            --primary: 200 80% 55%;
+            --primary-foreground: 0 0% 100%;
+            --secondary: 220 10% 18%;
+            --secondary-foreground: 0 0% 90%;
+            --muted: 220 10% 18%;
+            --muted-foreground: 220 5% 55%;
+            --accent: 200 60% 45%;
+            --accent-foreground: 0 0% 100%;
+            --destructive: 0 70% 50%;
+            --destructive-foreground: 0 0% 100%;
+            --border: 220 10% 20%;
+            --input: 220 10% 20%;
+            --ring: 200 80% 55%;
+            --radius: 0.5rem;
+            --success: 142 76% 45%;
+            --warning: 38 92% 50%;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background: hsl(var(--background));
+            color: hsl(var(--foreground));
+            line-height: 1.5;
+            min-height: 100vh;
+        }
+
+        .setup-container {
+            max-width: 960px;
+            margin: 0 auto;
+            padding: 2rem 1.5rem;
+        }
+
+        .setup-header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        .setup-header h1 {
+            font-size: 1.75rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.75rem;
+        }
+
+        .setup-header .agent-icon {
+            width: 2.5rem;
+            height: 2.5rem;
+            border-radius: var(--radius);
+            background: hsl(var(--secondary));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.25rem;
+        }
+
+        .setup-header p {
+            color: hsl(var(--muted-foreground));
+            font-size: 0.875rem;
+        }
+
+        .section-card {
+            background: hsl(var(--card));
+            border: 1px solid hsl(var(--border));
+            border-radius: var(--radius);
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+        }
+
+        .section-header {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            margin-bottom: 1.25rem;
+            padding-bottom: 0.75rem;
+            border-bottom: 1px solid hsl(var(--border));
+        }
+
+        .section-header .icon {
+            width: 2rem;
+            height: 2rem;
+            border-radius: calc(var(--radius) - 2px);
+            background: hsl(var(--accent) / 0.15);
+            color: hsl(var(--accent));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.875rem;
+        }
+
+        .section-header h2 {
+            font-size: 1.125rem;
+            font-weight: 600;
+            flex: 1;
+        }
+
+        .form-group {
+            margin-bottom: 1rem;
+        }
+
+        .form-group:last-child {
+            margin-bottom: 0;
+        }
+
+        .form-label {
+            display: block;
+            font-size: 0.8125rem;
+            font-weight: 500;
+            margin-bottom: 0.375rem;
+            color: hsl(var(--foreground));
+        }
+
+        .form-hint {
+            font-size: 0.6875rem;
+            color: hsl(var(--muted-foreground));
+            margin-top: 0.25rem;
+        }
+
+        .input {
+            width: 100%;
+            padding: 0.5rem 0.75rem;
+            background: hsl(var(--background));
+            border: 1px solid hsl(var(--input));
+            border-radius: calc(var(--radius) - 2px);
+            font-size: 0.875rem;
+            color: hsl(var(--foreground));
+            transition: all 0.15s ease;
+        }
+
+        .input:focus {
+            outline: none;
+            border-color: hsl(var(--ring));
+            box-shadow: 0 0 0 2px hsl(var(--ring) / 0.2);
+        }
+
+        .input::placeholder {
+            color: hsl(var(--muted-foreground));
+        }
+
+        .input[readonly] {
+            background: hsl(var(--muted));
+            cursor: not-allowed;
+        }
+
+        .input-sm {
+            width: auto;
+            min-width: 80px;
+            padding: 0.375rem 0.5rem;
+            font-size: 0.8125rem;
+        }
+
+        .input-group {
+            display: flex;
+            gap: 0.5rem;
+            align-items: stretch;
+        }
+
+        .input-group .input {
+            flex: 1;
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.375rem;
+            padding: 0.5rem 1rem;
+            border: 1px solid hsl(var(--border));
+            border-radius: calc(var(--radius) - 2px);
+            font-size: 0.875rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            text-align: center;
+            background: hsl(var(--secondary));
+            color: hsl(var(--secondary-foreground));
+        }
+
+        .btn:hover {
+            background: hsl(var(--muted));
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .btn-primary {
+            background: hsl(var(--primary));
+            color: hsl(var(--primary-foreground));
+            border-color: hsl(var(--primary));
+        }
+
+        .btn-primary:hover {
+            background: hsl(var(--primary) / 0.9);
+        }
+
+        .btn-success {
+            background: hsl(var(--success));
+            color: white;
+            border-color: hsl(var(--success));
+        }
+
+        .btn-success:hover {
+            background: hsl(var(--success) / 0.9);
+        }
+
+        .btn-destructive {
+            background: hsl(var(--destructive));
+            color: hsl(var(--destructive-foreground));
+            border-color: hsl(var(--destructive));
+        }
+
+        .btn-destructive:hover {
+            background: hsl(var(--destructive) / 0.9);
+        }
+
+        .btn-sm {
+            padding: 0.375rem 0.625rem;
+            font-size: 0.75rem;
+        }
+
+        .toggle-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0.75rem 0;
+        }
+
+        .toggle-row .toggle-label {
+            font-size: 0.875rem;
+            font-weight: 500;
+        }
+
+        .toggle-row .toggle-desc {
+            font-size: 0.75rem;
+            color: hsl(var(--muted-foreground));
+            margin-top: 0.125rem;
+        }
+
+        .toggle-switch {
+            position: relative;
+            width: 44px;
+            height: 24px;
+            flex-shrink: 0;
+        }
+
+        .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: hsl(var(--input));
+            transition: .3s;
+            border-radius: 24px;
+        }
+
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 18px;
+            width: 18px;
+            left: 3px;
+            bottom: 3px;
+            background-color: white;
+            transition: .3s;
+            border-radius: 50%;
+        }
+
+        input:checked + .slider {
+            background-color: hsl(var(--primary));
+        }
+
+        input:checked + .slider:before {
+            transform: translateX(20px);
+        }
+
+        .table-container {
+            width: 100%;
+            overflow-x: auto;
+            border: 1px solid hsl(var(--border));
+            border-radius: var(--radius);
+            margin-top: 0.75rem;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.875rem;
+        }
+
+        th {
+            text-align: left;
+            padding: 0.625rem 0.75rem;
+            font-weight: 500;
+            background: hsl(var(--muted));
+            border-bottom: 1px solid hsl(var(--border));
+            color: hsl(var(--muted-foreground));
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.025em;
+        }
+
+        td {
+            padding: 0.625rem 0.75rem;
+            border-bottom: 1px solid hsl(var(--border));
+            vertical-align: middle;
+        }
+
+        tr:last-child td {
+            border-bottom: none;
+        }
+
+        tr:hover {
+            background: hsl(var(--muted) / 0.4);
+        }
+
+        .stock-code {
+            font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+            font-weight: 600;
+            font-size: 0.8125rem;
+        }
+
+        .stock-name {
+            font-size: 0.8125rem;
+            color: hsl(var(--muted-foreground));
+        }
+
+        .price-up {
+            color: hsl(0 70% 55%);
+            font-weight: 600;
+        }
+
+        .price-down {
+            color: hsl(142 60% 45%);
+            font-weight: 600;
+        }
+
+        .price-neutral {
+            color: hsl(var(--muted-foreground));
+        }
+
+        .actions-cell {
+            display: flex;
+            gap: 0.375rem;
+        }
+
+        .empty-state {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 2.5rem 1rem;
+            text-align: center;
+        }
+
+        .empty-state-icon {
+            width: 3rem;
+            height: 3rem;
+            border-radius: 50%;
+            background: hsl(var(--muted));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.25rem;
+            margin-bottom: 0.75rem;
+        }
+
+        .empty-state-text {
+            font-size: 0.875rem;
+            color: hsl(var(--muted-foreground));
+        }
+
+        .schedule-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1rem;
+        }
+
+        .schedule-item {
+            display: flex;
+            flex-direction: column;
+            gap: 0.375rem;
+        }
+
+        .schedule-item label {
+            font-size: 0.8125rem;
+            font-weight: 500;
+        }
+
+        .test-buttons {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.75rem;
+        }
+
+        .status-message {
+            margin-top: 1rem;
+            padding: 0.75rem;
+            border-radius: calc(var(--radius) - 2px);
+            text-align: center;
+            font-size: 0.875rem;
+            display: none;
+        }
+
+        .status-message.success {
+            background: hsl(var(--success) / 0.1);
+            color: hsl(var(--success));
+            border: 1px solid hsl(var(--success) / 0.2);
+            display: block;
+        }
+
+        .status-message.error {
+            background: hsl(var(--destructive) / 0.1);
+            color: hsl(var(--destructive));
+            border: 1px solid hsl(var(--destructive) / 0.2);
+            display: block;
+        }
+
+        .status-message.info {
+            background: hsl(var(--primary) / 0.1);
+            color: hsl(var(--primary));
+            border: 1px solid hsl(var(--primary) / 0.2);
+            display: block;
+        }
+
+        .threshold-input {
+            width: 70px;
+            text-align: center;
+        }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: hsl(var(--muted));
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: hsl(var(--muted-foreground) / 0.3);
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: hsl(var(--muted-foreground) / 0.5);
+        }
+
+        /* Responsive */
+        @media (max-width: 640px) {
+            .setup-container {
+                padding: 1rem;
+            }
+
+            .schedule-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .test-buttons {
+                flex-direction: column;
+            }
+
+            .test-buttons .btn {
+                width: 100%;
+            }
+
+            .input-group {
+                flex-direction: column;
+            }
+
+            .input-group .btn {
+                width: 100%;
+            }
+
+            th, td {
+                padding: 0.5rem;
+                font-size: 0.75rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="setup-container">
+        <div class="setup-header">
+            <h1>
+                <span class="agent-icon">❄️</span>
+                银灰 - 金融助手配置
+            </h1>
+            <p>管理股票盯盘列表、推送设置与阈值告警</p>
+        </div>
+
+        <!-- Stock Management -->
+        <div class="section-card">
+            <div class="section-header">
+                <div class="icon">📈</div>
+                <h2>股票管理</h2>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">添加股票</label>
+                <div class="input-group">
+                    <input type="text" class="input" id="stockCodeInput" placeholder="输入6位股票代码，如 000001" maxlength="6">
+                    <button class="btn btn-primary" id="addStockBtn" onclick="addStock()">添加</button>
+                </div>
+                <div class="form-hint">支持沪深A股，输入代码后自动获取股票名称</div>
+            </div>
+
+            <div class="table-container">
+                <table id="watchlistTable">
+                    <thead>
+                        <tr>
+                            <th>代码</th>
+                            <th>名称</th>
+                            <th>现价</th>
+                            <th>涨跌</th>
+                            <th>成本价</th>
+                            <th>持仓</th>
+                            <th>盈亏</th>
+                            <th>阈值(%)</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody id="watchlistBody">
+                        <tr>
+                            <td colspan="9">
+                                <div class="empty-state">
+                                    <div class="empty-state-icon">📋</div>
+                                    <div class="empty-state-text">暂无股票，请在上方添加</div>
+                                </div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Push Settings -->
+        <div class="section-card">
+            <div class="section-header">
+                <div class="icon">⏰</div>
+                <h2>推送设置</h2>
+            </div>
+
+            <div class="toggle-row">
+                <div>
+                    <div class="toggle-label">启用定时推送</div>
+                    <div class="toggle-desc">在交易时段自动推送行情简报</div>
+                </div>
+                <label class="toggle-switch">
+                    <input type="checkbox" id="pushEnabled" checked>
+                    <span class="slider"></span>
+                </label>
+            </div>
+
+            <div id="scheduleSettings" style="margin-top: 0.75rem;">
+                <div class="schedule-grid">
+                    <div class="schedule-item">
+                        <label>开盘推送</label>
+                        <input type="time" class="input" id="scheduleOpen" value="09:15">
+                    </div>
+                    <div class="schedule-item">
+                        <label>午间推送 1</label>
+                        <input type="time" class="input" id="scheduleMidday1" value="11:30">
+                    </div>
+                    <div class="schedule-item">
+                        <label>午间推送 2</label>
+                        <input type="time" class="input" id="scheduleMidday2" value="14:00">
+                    </div>
+                    <div class="schedule-item">
+                        <label>收盘推送</label>
+                        <input type="time" class="input" id="scheduleClose" value="15:05">
+                    </div>
+                </div>
+            </div>
+
+            <div style="border-top: 1px solid hsl(var(--border)); margin-top: 1rem; padding-top: 1rem;">
+                <div class="toggle-row">
+                    <div>
+                        <div class="toggle-label">启用阈值告警</div>
+                        <div class="toggle-desc">当股票涨跌幅超过设定阈值时推送告警</div>
+                    </div>
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="thresholdAlertsEnabled" checked>
+                        <span class="slider"></span>
+                    </label>
+                </div>
+
+                <div class="form-group" style="margin-top: 0.75rem;">
+                    <label class="form-label">检查间隔（分钟）</label>
+                    <input type="number" class="input input-sm" id="checkInterval" value="5" min="1" max="60" style="width: 120px;">
+                </div>
+            </div>
+
+            <div style="display: flex; justify-content: flex-end; margin-top: 1rem;">
+                <button class="btn btn-primary" onclick="saveConfig()">保存设置</button>
+            </div>
+        </div>
+
+        <!-- Test Push -->
+        <div class="section-card">
+            <div class="section-header">
+                <div class="icon">🧪</div>
+                <h2>测试推送</h2>
+            </div>
+
+            <div class="test-buttons">
+                <button class="btn btn-success" onclick="testPush('open')">测试开盘推送</button>
+                <button class="btn btn-success" onclick="testPush('midday')">测试午间推送</button>
+                <button class="btn btn-success" onclick="testPush('close')">测试收盘推送</button>
+            </div>
+        </div>
+
+        <div class="status-message" id="statusMessage"></div>
+    </div>
+
+    <script>
+        const { ipcRenderer } = require('electron');
+
+        let watchlist = [];
+        let quotes = [];
+        let config = {};
+        let refreshTimer = null;
+        let isVisible = true;
+
+        // Load data on page load
+        async function init() {
+            await loadConfig();
+            await loadWatchlist();
+            await refreshQuotes();
+            startAutoRefresh();
+        }
+
+        async function loadConfig() {
+            try {
+                const result = await ipcRenderer.invoke('svrash-finance-get-config');
+                if (result.success) {
+                    config = result.config;
+                    document.getElementById('pushEnabled').checked = config.pushEnabled !== false;
+                    document.getElementById('thresholdAlertsEnabled').checked = config.thresholdAlertsEnabled !== false;
+                    document.getElementById('checkInterval').value = config.checkIntervalMinutes || 5;
+
+                    const schedule = config.pushSchedule || {};
+                    document.getElementById('scheduleOpen').value = schedule.open || '09:15';
+                    document.getElementById('scheduleMidday1').value = (schedule.midday && schedule.midday[0]) || '11:30';
+                    document.getElementById('scheduleMidday2').value = (schedule.midday && schedule.midday[1]) || '14:00';
+                    document.getElementById('scheduleClose').value = schedule.close || '15:05';
+                }
+            } catch (err) {
+                showStatus('加载配置失败: ' + err.message, 'error');
+            }
+        }
+
+        async function loadWatchlist() {
+            try {
+                const result = await ipcRenderer.invoke('svrash-finance-get-watchlist');
+                if (result.success) {
+                    watchlist = result.watchlist || [];
+                    renderWatchlist();
+                }
+            } catch (err) {
+                showStatus('加载股票列表失败: ' + err.message, 'error');
+            }
+        }
+
+        async function refreshQuotes() {
+            if (watchlist.length === 0) return;
+            try {
+                const result = await ipcRenderer.invoke('svrash-finance-get-quotes');
+                if (result.success) {
+                    quotes = result.quotes || [];
+                    renderWatchlist();
+                }
+            } catch (err) {
+                console.error('刷新行情失败:', err.message);
+            }
+        }
+
+        function renderWatchlist() {
+            const tbody = document.getElementById('watchlistBody');
+            if (watchlist.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="9">
+                            <div class="empty-state">
+                                <div class="empty-state-icon">📋</div>
+                                <div class="empty-state-text">暂无股票，请在上方添加</div>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+
+            tbody.innerHTML = watchlist.map(stock => {
+                const quote = quotes.find(q => q.code === stock.code);
+                const price = quote ? quote.price : '-';
+                const changePercent = quote ? quote.changePercent : null;
+                const changeClass = changePercent > 0 ? 'price-up' : (changePercent < 0 ? 'price-down' : 'price-neutral');
+                const changeText = changePercent !== null ? (changePercent > 0 ? '+' : '') + changePercent.toFixed(2) + '%' : '-';
+                const threshold = stock.threshold !== null && stock.threshold !== undefined ? stock.threshold : '';
+
+                // Cost price and holdings
+                const costPrice = stock.costPrice !== null && stock.costPrice !== undefined ? stock.costPrice : '';
+                const holdings = stock.holdings !== null && stock.holdings !== undefined ? stock.holdings : '';
+
+                // Calculate profit/loss
+                let profitLoss = '-';
+                let profitLossClass = 'price-neutral';
+                if (price !== '-' && costPrice !== '' && holdings !== '' && Number(holdings) > 0) {
+                    const currentPrice = Number(price);
+                    const cost = Number(costPrice);
+                    const holdNum = Number(holdings);
+                    const pl = (currentPrice - cost) * holdNum;
+                    profitLoss = (pl >= 0 ? '+' : '') + pl.toFixed(2);
+                    profitLossClass = pl >= 0 ? 'price-up' : 'price-down';
+                }
+
+                return `
+                    <tr>
+                        <td><span class="stock-code">${stock.code}</span></td>
+                        <td><span class="stock-name">${stock.name || '-'}</span></td>
+                        <td>${price !== '-' ? price.toFixed(3) : '-'}</td>
+                        <td class="${changeClass}">${changeText}</td>
+                        <td>
+                            <input type="number" class="input input-sm" style="width: 80px;"
+                                value="${costPrice}" 
+                                placeholder="成本"
+                                step="0.001"
+                                onchange="updateCostPrice('${stock.code}', this.value)">
+                        </td>
+                        <td>
+                            <input type="number" class="input input-sm" style="width: 70px;"
+                                value="${holdings}" 
+                                placeholder="数量"
+                                onchange="updateHoldings('${stock.code}', this.value)">
+                        </td>
+                        <td class="${profitLossClass}">${profitLoss}</td>
+                        <td>
+                            <input type="number" class="input input-sm threshold-input" 
+                                value="${threshold}" 
+                                placeholder="%"
+                                onchange="updateThreshold('${stock.code}', this.value)">
+                        </td>
+                        <td>
+                            <div class="actions-cell">
+                                <button class="btn btn-sm btn-destructive" onclick="removeStock('${stock.code}')">删除</button>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        async function addStock() {
+            const input = document.getElementById('stockCodeInput');
+            const code = input.value.trim();
+            const btn = document.getElementById('addStockBtn');
+
+            if (!/^\d{6}$/.test(code)) {
+                showStatus('请输入6位数字股票代码', 'error');
+                return;
+            }
+
+            btn.disabled = true;
+            try {
+                // Fetch name via IPC by querying this specific code
+                let name = '';
+                try {
+                    const quoteResult = await ipcRenderer.invoke('svrash-finance-get-quotes');
+                    if (quoteResult.success && quoteResult.quotes) {
+                        const match = quoteResult.quotes.find(q => q.code === code);
+                        if (match && match.name) {
+                            name = match.name;
+                        }
+                    }
+                    // If not in current watchlist quotes, try fetching just this code via a dedicated IPC
+                    if (!name) {
+                        const singleQuote = await ipcRenderer.invoke('svrash-finance-get-quote-for-code', code);
+                        if (singleQuote.success && singleQuote.quote && singleQuote.quote.name) {
+                            name = singleQuote.quote.name;
+                        }
+                    }
+                } catch (e) {
+                    // ignore
+                }
+
+                const result = await ipcRenderer.invoke('svrash-finance-add-stock', code, name, null);
+                if (result.success) {
+                    input.value = '';
+                    showStatus(`已添加 ${code}${name ? ' (' + name + ')' : ''}`, 'success');
+                    await loadWatchlist();
+                    await refreshQuotes();
+                } else {
+                    showStatus('添加失败: ' + (result.error || '未知错误'), 'error');
+                }
+            } catch (err) {
+                showStatus('添加失败: ' + err.message, 'error');
+            } finally {
+                btn.disabled = false;
+            }
+        }
+
+        async function removeStock(code) {
+            if (!confirm(`确定要删除 ${code} 吗？`)) return;
+            try {
+                const result = await ipcRenderer.invoke('svrash-finance-remove-stock', code);
+                if (result.success) {
+                    showStatus('删除成功', 'success');
+                    await loadWatchlist();
+                    await refreshQuotes();
+                } else {
+                    showStatus('删除失败: ' + (result.error || '未知错误'), 'error');
+                }
+            } catch (err) {
+                showStatus('删除失败: ' + err.message, 'error');
+            }
+        }
+
+        async function updateThreshold(code, value) {
+            const threshold = value === '' ? null : parseFloat(value);
+            try {
+                const result = await ipcRenderer.invoke('svrash-finance-update-threshold', code, threshold);
+                if (result.success) {
+                    showStatus('阈值更新成功', 'success');
+                    const stock = watchlist.find(s => s.code === code);
+                    if (stock) stock.threshold = threshold;
+                } else {
+                    showStatus('阈值更新失败: ' + (result.error || '未知错误'), 'error');
+                }
+            } catch (err) {
+                showStatus('阈值更新失败: ' + err.message, 'error');
+            }
+        }
+
+        async function updateCostPrice(code, value) {
+            const costPrice = value === '' ? null : parseFloat(value);
+            const stock = watchlist.find(s => s.code === code);
+            if (stock) {
+                stock.costPrice = costPrice;
+                await saveCostAndHoldings(code, costPrice, stock.holdings);
+            }
+        }
+
+        async function updateHoldings(code, value) {
+            const holdings = value === '' ? null : parseInt(value, 10);
+            const stock = watchlist.find(s => s.code === code);
+            if (stock) {
+                stock.holdings = holdings;
+                await saveCostAndHoldings(code, stock.costPrice, holdings);
+            }
+        }
+
+        async function saveCostAndHoldings(code, costPrice, holdings) {
+            try {
+                const result = await ipcRenderer.invoke('svrash-finance-update-cost-holdings', code, costPrice, holdings);
+                if (result.success) {
+                    showStatus('持仓信息更新成功', 'success');
+                    renderWatchlist();
+                } else {
+                    showStatus('更新失败: ' + (result.error || '未知错误'), 'error');
+                }
+            } catch (err) {
+                showStatus('更新失败: ' + err.message, 'error');
+            }
+        }
+
+        async function saveConfig() {
+            const updates = {
+                pushEnabled: document.getElementById('pushEnabled').checked,
+                thresholdAlertsEnabled: document.getElementById('thresholdAlertsEnabled').checked,
+                checkIntervalMinutes: parseInt(document.getElementById('checkInterval').value, 10) || 5,
+                pushSchedule: {
+                    open: document.getElementById('scheduleOpen').value,
+                    midday: [
+                        document.getElementById('scheduleMidday1').value,
+                        document.getElementById('scheduleMidday2').value
+                    ],
+                    close: document.getElementById('scheduleClose').value
+                }
+            };
+
+            try {
+                const result = await ipcRenderer.invoke('svrash-finance-update-config', updates);
+                if (result.success) {
+                    showStatus('配置保存成功', 'success');
+                    config = { ...config, ...updates };
+                } else {
+                    showStatus('保存失败: ' + (result.error || '未知错误'), 'error');
+                }
+            } catch (err) {
+                showStatus('保存失败: ' + err.message, 'error');
+            }
+        }
+
+        async function testPush(type) {
+            try {
+                showStatus(`正在发送${type === 'open' ? '开盘' : type === 'midday' ? '午间' : '收盘'}测试推送...`, 'info');
+                const result = await ipcRenderer.invoke('svrash-finance-test-push', type);
+                if (result.success) {
+                    showStatus('测试推送已发送', 'success');
+                } else {
+                    showStatus('测试推送失败: ' + (result.error || '未知错误'), 'error');
+                }
+            } catch (err) {
+                showStatus('测试推送失败: ' + err.message, 'error');
+            }
+        }
+
+        function showStatus(message, type) {
+            const statusEl = document.getElementById('statusMessage');
+            statusEl.textContent = message;
+            statusEl.className = `status-message ${type}`;
+
+            setTimeout(() => {
+                statusEl.className = 'status-message';
+            }, 5000);
+        }
+
+        function startAutoRefresh() {
+            if (refreshTimer) clearInterval(refreshTimer);
+            refreshTimer = setInterval(() => {
+                if (isVisible) {
+                    refreshQuotes();
+                }
+            }, 30000);
+        }
+
+        // Enter key to add stock
+        document.getElementById('stockCodeInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') addStock();
+        });
+
+        // Visibility handling
+        document.addEventListener('visibilitychange', () => {
+            isVisible = !document.hidden;
+        });
+
+        // Initialize
+        init();
+    </script>
+</body>
+</html>
