@@ -1367,6 +1367,7 @@ ipcMain.handle('svrash-finance-update-threshold', async (event, code, threshold)
 ipcMain.handle('svrash-finance-update-cost-holdings', async (event, code, costPrice, holdings) => {
     try {
         const { watchlistManager } = require('../Svrash/src/modules/finance/watchlist-manager');
+
         watchlistManager.updateCostAndHoldings(code, costPrice, holdings);
         return { success: true };
     } catch (error) {
