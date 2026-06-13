@@ -1,6 +1,6 @@
 {
   "name": "ark-agents",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "基于罗德岛干员的 Electron 模块化多智能体桌面应用",
   "main": "scripts/main.js",
   "author": "Anthony_Li",
@@ -27,6 +27,7 @@
       "Texas/**/*",
       "Kaltsit/**/*",
       "Muelsyse/**/*",
+      "Svrash/**/*",
       "models/**/*",
       "Models/**/*",
       "package.json"
@@ -89,8 +90,12 @@
     "mammoth": "^1.6.0",
     "officeparser": "^4.0.5",
     "ollama": "^0.5.0",
+    "papaparse": "^5.5.3",
     "pdf-parse": "^1.1.1",
     "pixi.js": "6.5.10",
-    "ws": "^8.21.0"
+    "plotly.js-dist-min": "^3.6.0",
+    "ws": "^8.21.0",
+    "xlsx": "^0.18.5",
+    "node-cron": "^3.0.3"
   }
 }

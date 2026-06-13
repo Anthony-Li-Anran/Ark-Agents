@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, screen, Tray, Menu, nativeImage, shell } = require('electron');
+const { app, BrowserWindow, ipcMain, screen, Tray, Menu, nativeImage, shell, dialog } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const { AIConfigManager } = require('../Amiya/src/modules/ai/ai-config');
@@ -15,6 +15,9 @@ const { DingTalkStreamClient } = require('./shared/dingtalk-stream');
 const { DocumentParser } = require('../Muelsyse/src/modules/document/document-parser');
 const { DocumentStore } = require('../Muelsyse/src/modules/document/document-store');
 const { RAGEngine } = require('../Muelsyse/src/modules/document/rag-engine');
+const { createAIProvider } = require('./shared/ai-provider');
+const { setCreateAIProvider: setAIConfigProvider } = require('../Amiya/src/modules/ai/ai-config');
+const { setCreateAIProvider: setRAGProvider } = require('../Muelsyse/src/modules/document/rag-engine');
 const { LearningSummarizer } = require('../Muelsyse/src/modules/learning/learning-summarizer');
 const { LearningQA } = require('../Muelsyse/src/modules/learning/learning-qa');
 const { FlashCardGenerator } = require('../Muelsyse/src/modules/learning/flash-card');
@@ -53,6 +56,8 @@ let learningQA = null;
 let flashCardGenerator = null;
 let pomodoroTimer = null;
 let muelsyseLearningWindow = null;
+let svrashFinanceWindow = null;
+// Note: svrashAnalysisWindow removed. Data Analysis opens https://autostat.cc/demo in system browser.
 
 // Base paths - handle both development and production
 function getBasePath() {
@@ -72,6 +77,8 @@ const MODELS_PATH = path.join(BASE_PATH, 'Models');
 const KALTSIT_PATH = path.join(BASE_PATH, 'Kaltsit');
 const KALTSIT_CONFIG_PATH = path.join(KALTSIT_PATH, 'config');
 const MUELSYSE_PATH = path.join(BASE_PATH, 'Muelsyse');
+const SVRASH_PATH = path.join(BASE_PATH, 'Svrash');
+// Note: SVRASH_PATH no longer needed for analysis window. Data Analysis opens https://autostat.cc/demo in system browser.
 
 // Load system prompt for Amiya
 let systemPrompt = '';
@@ -130,6 +137,13 @@ ipcMain.on('set-ignore-mouse-events', (event, ignore) => {
 
 ipcMain.on('app-exit', () => {
     app.quit();
+});
+
+// Open external link in system browser
+ipcMain.on('open-external-link', (event, url) => {
+    if (url) {
+        shell.openExternal(url);
+    }
 });
 
 // Check Ollama status
@@ -339,6 +353,36 @@ ipcMain.on('open-muelsyse-learning', () => {
     });
 });
 
+// Note: open-svrash-analysis handler removed. Data Analysis now opens https://autostat.cc/demo in system browser.
+
+ipcMain.on('open-svrash-finance', () => {
+    if (svrashFinanceWindow && !svrashFinanceWindow.isDestroyed()) {
+        svrashFinanceWindow.focus();
+        return;
+    }
+
+    svrashFinanceWindow = new BrowserWindow({
+        width: 900,
+        height: 700,
+        title: 'Svrash - Finance Assistant',
+        webPreferences: {
+            nodeIntegration: true,
+            contextIsolation: false
+        },
+        resizable: true,
+        minimizable: true,
+        maximizable: true,
+        closable: true,
+        backgroundColor: '#f8fafc'
+    });
+
+    svrashFinanceWindow.loadFile(path.join(SVRASH_PATH, 'src/views/finance-setup.html'));
+
+    svrashFinanceWindow.on('closed', () => {
+        svrashFinanceWindow = null;
+    });
+});
+
 ipcMain.on('open-memo-window', () => {
     if (memoWindow && !memoWindow.isDestroyed()) {
         memoWindow.focus();
@@ -395,7 +439,7 @@ ipcMain.on('open-reminder-window', () => {
     });
 });
 
-// Setup complete handler
+// Setup complete handler (from initial setup wizard)
 ipcMain.on('setup-complete', () => {
     // Close setup window if exists
     if (setupWindow && !setupWindow.isDestroyed()) {
@@ -409,6 +453,18 @@ ipcMain.on('setup-complete', () => {
     }
     if (!mainWindow || mainWindow.isDestroyed()) {
         createMainWindow();
+    }
+    if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send('ai-setup-complete');
+    }
+});
+
+// AI settings done button handler
+ipcMain.on('ai-setup-complete', () => {
+    // Close AI settings window if exists
+    if (aiSettingsWindow && !aiSettingsWindow.isDestroyed()) {
+        aiSettingsWindow.close();
+        aiSettingsWindow = null;
     }
     if (mainWindow && !mainWindow.isDestroyed()) {
         mainWindow.webContents.send('ai-setup-complete');
@@ -440,87 +496,14 @@ function trimTrailingSlashes(url) {
     return String(url || '').trim().replace(/\/+$/, '');
 }
 
-function getOpenAICompatibleChatUrl(endpoint) {
-    const baseUrl = trimTrailingSlashes(endpoint);
-    return baseUrl.endsWith('/v1') ? `${baseUrl}/chat/completions` : `${baseUrl}/v1/chat/completions`;
-}
-
 async function callAI(config, prompt, messages = null) {
-    const endpoint = trimTrailingSlashes(config.endpoint || 'http://127.0.0.1:11434');
-    const model = String(config.model || '').trim();
-    if (!model) {
-        throw new Error('No AI model selected. Please configure a model first.');
+    const provider = createAIProvider(config);
+
+    if (messages) {
+        return provider.chat(messages);
     }
 
-    let apiUrl;
-    let requestBody;
-
-    if (config.provider === 'ollama') {
-        apiUrl = `${endpoint}/api/generate`;
-        requestBody = {
-            model,
-            prompt,
-            stream: false
-        };
-    } else if (config.provider === 'anthropic') {
-        // Anthropic uses different API format
-        apiUrl = `${endpoint}/messages`;
-        requestBody = {
-            model,
-            max_tokens: 4096,
-            messages: messages || [{ role: 'user', content: prompt }]
-        };
-    } else {
-        // OpenAI-compatible APIs (lmstudio, openai, deepseek, zhipu, moonshot, qwen, custom)
-        apiUrl = getOpenAICompatibleChatUrl(endpoint);
-        requestBody = {
-            model,
-            messages: messages || [
-                { role: 'system', content: systemPrompt },
-                { role: 'user', content: prompt }
-            ],
-            stream: false
-        };
-    }
-
-    const headers = { 'Content-Type': 'application/json' };
-    
-    if (config.provider === 'anthropic') {
-        headers['x-api-key'] = config.apiKey;
-        headers['anthropic-version'] = '2023-06-01';
-    } else if (config.apiKey) {
-        headers['Authorization'] = `Bearer ${config.apiKey}`;
-    }
-
-    const response = await fetch(apiUrl, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify(requestBody)
-    });
-
-    if (!response.ok) {
-        const errorText = await response.text();
-        let errorMessage = errorText;
-        try {
-            errorMessage = JSON.parse(errorText).error?.message || JSON.parse(errorText).error || errorText;
-        } catch {
-            // Keep raw service response text.
-        }
-        if (config.provider === 'ollama' && response.status === 404 && errorMessage.includes('not found')) {
-            throw new Error(`Ollama model "${model}" is not installed. Run: ollama pull ${model}`);
-        }
-        throw new Error(`AI service response ${response.status}: ${errorMessage}`);
-    }
-
-    const data = await response.json();
-    
-    if (config.provider === 'ollama') {
-        return data.response || '';
-    } else if (config.provider === 'anthropic') {
-        return data.content?.[0]?.text || '';
-    } else {
-        return data.choices?.[0]?.message?.content || '';
-    }
+    return provider.complete(prompt, { systemPrompt });
 }
 
 function buildToolChatPrompt(history, includeTools = true) {
@@ -1254,6 +1237,10 @@ function createTray() {
 }
 
 app.whenReady().then(async () => {
+    // Inject AI Provider factory into modules before they use it
+    setAIConfigProvider(createAIProvider);
+    setRAGProvider(createAIProvider);
+
     aiConfigManager = new AIConfigManager(app.getPath('userData'));
     scheduleManager = new ScheduleManager(app.getPath('userData'));
     memoManager = new MemoManager(app.getPath('userData'));
@@ -1263,7 +1250,7 @@ app.whenReady().then(async () => {
     medicalLogger = new MedicalLogger();
     medicalTools = new MedicalTools();
     dingTalkConfigManager = new DingTalkConfigManager(app.getPath('userData'));
-    
+
     documentParser = new DocumentParser();
     documentStore = new DocumentStore(app.getPath('userData'), aiConfigManager);
     ragEngine = new RAGEngine({ documentStore, aiConfigManager, operatorId: 'muelsyse' });
@@ -1287,7 +1274,8 @@ app.whenReady().then(async () => {
     };
     
     await initDingTalkConnector();
-    
+    await initSvrashFinanceAssistant();
+
     createMainWindow();
     createTray();
 
@@ -1304,8 +1292,194 @@ app.on('window-all-closed', function () {
 
 // === DingTalk Integration ===
 
+// === Svrash Finance Assistant ===
+
+let svrashScheduler = null;
+let svrashThresholdMonitor = null;
+
+async function initSvrashFinanceAssistant() {
+    try {
+        const { Scheduler } = require('../Svrash/src/modules/finance/scheduler');
+        const { ThresholdMonitor } = require('../Svrash/src/modules/finance/threshold-monitor');
+        const { financeConfigManager } = require('../Svrash/src/modules/finance/finance-config-manager');
+
+        const svrashConnectorConfig = dingTalkConfigManager.getConnectorConfig('svrash');
+        if (!svrashConnectorConfig || !svrashConnectorConfig.enabled) {
+            console.log('[SvrashFinance] DingTalk connector not enabled, skipping initialization');
+            return;
+        }
+
+        const svrashConnector = new DingTalkConnector(svrashConnectorConfig);
+        dingTalkConnectors.svrash = svrashConnector;
+
+        svrashScheduler = new Scheduler(svrashConnector);
+        svrashScheduler.start();
+        console.log('[SvrashFinance] Scheduler started');
+
+        svrashThresholdMonitor = new ThresholdMonitor(svrashConnector);
+        svrashThresholdMonitor.start();
+        console.log('[SvrashFinance] Threshold monitor started');
+    } catch (error) {
+        console.error('[SvrashFinance] Failed to initialize:', error);
+    }
+}
+
+// Finance Assistant IPC handlers
+ipcMain.handle('svrash-finance-get-watchlist', async () => {
+    try {
+        const { watchlistManager } = require('../Svrash/src/modules/finance/watchlist-manager');
+        return { success: true, watchlist: watchlistManager.getWatchlist() };
+    } catch (error) {
+        return { success: false, error: error.message };
+    }
+});
+
+ipcMain.handle('svrash-finance-add-stock', async (event, code, name, threshold) => {
+    try {
+        const { watchlistManager } = require('../Svrash/src/modules/finance/watchlist-manager');
+        const result = watchlistManager.addStock(code, name, threshold);
+        return { success: true, stock: result };
+    } catch (error) {
+        return { success: false, error: error.message };
+    }
+});
+
+ipcMain.handle('svrash-finance-remove-stock', async (event, code) => {
+    try {
+        const { watchlistManager } = require('../Svrash/src/modules/finance/watchlist-manager');
+        watchlistManager.removeStock(code);
+        return { success: true };
+    } catch (error) {
+        return { success: false, error: error.message };
+    }
+});
+
+ipcMain.handle('svrash-finance-update-threshold', async (event, code, threshold) => {
+    try {
+        const { watchlistManager } = require('../Svrash/src/modules/finance/watchlist-manager');
+        watchlistManager.updateThreshold(code, threshold);
+        return { success: true };
+    } catch (error) {
+        return { success: false, error: error.message };
+    }
+});
+
+ipcMain.handle('svrash-finance-update-cost-holdings', async (event, code, costPrice, holdings) => {
+    try {
+        const { watchlistManager } = require('../Svrash/src/modules/finance/watchlist-manager');
+        watchlistManager.updateCostAndHoldings(code, costPrice, holdings);
+        return { success: true };
+    } catch (error) {
+        return { success: false, error: error.message };
+    }
+});
+
+ipcMain.handle('svrash-finance-get-quotes', async () => {
+    try {
+        const { getStockQuote } = require('../Svrash/src/modules/finance/finance-data');
+        const { watchlistManager } = require('../Svrash/src/modules/finance/watchlist-manager');
+        const watchlist = watchlistManager.getWatchlist();
+        if (watchlist.length === 0) {
+            return { success: true, quotes: [] };
+        }
+        const codes = watchlist.map(s => s.code);
+        const quotes = await getStockQuote(codes);
+        return { success: true, quotes };
+    } catch (error) {
+        return { success: false, error: error.message };
+    }
+});
+
+ipcMain.handle('svrash-finance-get-config', async () => {
+    try {
+        const { financeConfigManager } = require('../Svrash/src/modules/finance/finance-config-manager');
+        return { success: true, config: financeConfigManager.getConfig() };
+    } catch (error) {
+        return { success: false, error: error.message };
+    }
+});
+
+ipcMain.handle('svrash-finance-update-config', async (event, updates) => {
+    try {
+        const { financeConfigManager } = require('../Svrash/src/modules/finance/finance-config-manager');
+        financeConfigManager.updateConfig(updates);
+        return { success: true };
+    } catch (error) {
+        return { success: false, error: error.message };
+    }
+});
+
+ipcMain.handle('svrash-finance-get-quote-for-code', async (event, code) => {
+    try {
+        const { getStockQuote } = require('../Svrash/src/modules/finance/finance-data');
+        const quotes = await getStockQuote([code]);
+        return { success: true, quote: quotes && quotes.length > 0 ? quotes[0] : null };
+    } catch (error) {
+        return { success: false, error: error.message };
+    }
+});
+
+ipcMain.handle('svrash-finance-test-push', async (event, type) => {
+    try {
+        const { Scheduler } = require('../Svrash/src/modules/finance/scheduler');
+        const { watchlistManager } = require('../Svrash/src/modules/finance/watchlist-manager');
+        const { financeConfigManager } = require('../Svrash/src/modules/finance/finance-config-manager');
+        const { getStockQuote, getFinanceNews } = require('../Svrash/src/modules/finance/finance-data');
+        const { formatOpenPush, formatMiddayPush, formatClosePush } = require('../Svrash/src/modules/finance/message-formatter');
+
+        // Get svrash connector config
+        const svrashConnectorConfig = dingTalkConfigManager.getConnectorConfig('svrash');
+
+        // If DingTalk is not enabled, return error with clear message
+        if (!svrashConnectorConfig || !svrashConnectorConfig.enabled) {
+            return {
+                success: false,
+                error: '银灰的钉钉机器人未启用。请在"钉钉机器人配置"中启用银灰(Svrash)的机器人，并配置 webhookUrl 和 accessToken。'
+            };
+        }
+
+        // Initialize connector and scheduler for test
+        const { DingTalkConnector } = require('./shared/dingtalk-connector');
+        const testConnector = new DingTalkConnector(svrashConnectorConfig);
+
+        // Create a test scheduler instance
+        const testScheduler = new Scheduler(testConnector);
+
+        // Force trigger push (skip trading day check for testing)
+        const date = new Date();
+        const watchlist = watchlistManager.getWatchlist();
+
+        if (!watchlist || watchlist.length === 0) {
+            return { success: false, error: '股票列表为空，请先添加股票' };
+        }
+
+        const codes = watchlist.map(s => s.code);
+        const stocks = await getStockQuote(codes);
+
+        let message;
+        if (type === 'open') {
+            const news = await getFinanceNews();
+            message = formatOpenPush(date, stocks, news);
+        } else if (type === 'midday') {
+            message = formatMiddayPush(date, stocks);
+        } else if (type === 'close') {
+            message = formatClosePush(date, stocks);
+        }
+
+        if (message) {
+            await testConnector.sendMarkdownMessage('银灰金融助手', message);
+            return { success: true };
+        } else {
+            return { success: false, error: '生成消息失败' };
+        }
+    } catch (error) {
+        console.error('[SvrashFinance] Test push error:', error);
+        return { success: false, error: error.message };
+    }
+});
+
 async function initDingTalkConnector() {
-    const agents = ['amiya', 'texas', 'kaltsit'];
+    const agents = ['amiya', 'texas', 'kaltsit', 'svrash'];
     
     for (const agent of agents) {
         const connectorConfig = dingTalkConfigManager.getConnectorConfig(agent);
@@ -1352,16 +1526,16 @@ async function initDingTalkConnector() {
 
 async function handleDingTalkMessage(message, agent) {
     const { senderId, content, senderNick } = message;
-    
+
     // Check if user has active session
     const sessionKey = `dingtalk_${agent}_${senderId}`;
     let session = dingTalkConversationHistory.get(sessionKey);
-    
+
     if (!session) {
         session = { agent, history: [] };
         dingTalkConversationHistory.set(sessionKey, session);
     }
-    
+
     // Route to appropriate handler based on agent
     if (agent === 'amiya') {
         await handleDingTalkAmiyaMessage(senderId, content, session);
@@ -1369,6 +1543,8 @@ async function handleDingTalkMessage(message, agent) {
         await handleDingTalkTexasMessage(senderId, content, session);
     } else if (agent === 'kaltsit') {
         await handleDingTalkKaltsitMessage(senderId, content, session);
+    } else if (agent === 'svrash') {
+        await handleDingTalkSvrashMessage(senderId, content, session);
     }
 }
 
@@ -1406,6 +1582,92 @@ async function handleDingTalkTexasMessage(userId, content, session) {
     
     if (dingTalkConnectors.texas) {
         await dingTalkConnectors.texas.sendTextMessage(response);
+    }
+}
+
+async function handleDingTalkSvrashMessage(userId, content, session) {
+    try {
+        const { watchlistManager } = require('../Svrash/src/modules/finance/watchlist-manager');
+        const { getStockQuote } = require('../Svrash/src/modules/finance/finance-data');
+        const { formatThresholdAlert } = require('../Svrash/src/modules/finance/message-formatter');
+
+        const text = content.trim();
+
+        // Simple command parsing
+        if (text.startsWith('关注') || text.startsWith('添加')) {
+            const code = text.replace(/[^0-9]/g, '').trim();
+            if (code.length === 6) {
+                watchlistManager.addStock(code, '', null);
+                if (dingTalkConnectors.svrash) {
+                    await dingTalkConnectors.svrash.sendTextMessage(`已添加关注：${code}`);
+                }
+            } else {
+                if (dingTalkConnectors.svrash) {
+                    await dingTalkConnectors.svrash.sendTextMessage('请输入正确的6位股票代码，例如：关注 600519');
+                }
+            }
+            return;
+        }
+
+        if (text.startsWith('删除') || text.startsWith('移除')) {
+            const code = text.replace(/[^0-9]/g, '').trim();
+            if (code.length === 6) {
+                watchlistManager.removeStock(code);
+                if (dingTalkConnectors.svrash) {
+                    await dingTalkConnectors.svrash.sendTextMessage(`已移除关注：${code}`);
+                }
+            }
+            return;
+        }
+
+        if (text === '列表' || text === '关注列表') {
+            const watchlist = watchlistManager.getWatchlist();
+            if (watchlist.length === 0) {
+                if (dingTalkConnectors.svrash) {
+                    await dingTalkConnectors.svrash.sendTextMessage('当前关注列表为空。发送"关注 股票代码"添加。');
+                }
+            } else {
+                const codes = watchlist.map(s => s.code);
+                const quotes = await getStockQuote(codes);
+                const lines = quotes.map(q => `${q.code} ${q.name} | ￥${q.price} | ${q.changePercent > 0 ? '+' : ''}${q.changePercent}%`);
+                if (dingTalkConnectors.svrash) {
+                    await dingTalkConnectors.svrash.sendMarkdownMessage('📋 关注列表', lines.join('\n'));
+                }
+            }
+            return;
+        }
+
+        if (text === '行情' || text === '报价') {
+            const watchlist = watchlistManager.getWatchlist();
+            if (watchlist.length === 0) {
+                if (dingTalkConnectors.svrash) {
+                    await dingTalkConnectors.svrash.sendTextMessage('关注列表为空，无法获取行情。');
+                }
+                return;
+            }
+            const codes = watchlist.map(s => s.code);
+            const quotes = await getStockQuote(codes);
+            const lines = quotes.map(q => `${q.code} ${q.name} | 最新价: ￥${q.price} | 涨跌: ${q.changePercent > 0 ? '+' : ''}${q.changePercent}% | 最高: ￥${q.high} | 最低: ￥${q.low}`);
+            if (dingTalkConnectors.svrash) {
+                await dingTalkConnectors.svrash.sendMarkdownMessage('📈 实时行情', lines.join('\n'));
+            }
+            return;
+        }
+
+        // Default help message
+        const helpText = `银灰金融助手指令：
+• 关注 股票代码 — 添加关注
+• 删除 股票代码 — 移除关注
+• 列表 — 查看关注列表
+• 行情 — 获取实时行情`;
+        if (dingTalkConnectors.svrash) {
+            await dingTalkConnectors.svrash.sendTextMessage(helpText);
+        }
+    } catch (error) {
+        console.error('[DingTalk] Svrash response error:', error);
+        if (dingTalkConnectors.svrash) {
+            await dingTalkConnectors.svrash.sendTextMessage('抱歉，处理指令时出错了，请稍后再试。');
+        }
     }
 }
 

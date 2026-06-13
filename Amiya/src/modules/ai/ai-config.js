@@ -9,6 +9,11 @@ const path = require('path');
 const { exec, spawn } = require('child_process');
 const util = require('util');
 const execPromise = util.promisify(exec);
+let _createAIProvider = null;
+
+function setCreateAIProvider(factory) {
+    _createAIProvider = factory;
+}
 
 const CONFIG_FILE = 'ai-config.json';
 
@@ -277,6 +282,41 @@ class AIConfigManager {
         }
     }
 
+    async startOllamaService() {
+        try {
+            const ollamaPath = await this.getOllamaExecutable();
+            if (!ollamaPath) {
+                console.log('[AI Config] Ollama executable not found, cannot auto-start');
+                return false;
+            }
+
+            console.log('[AI Config] Attempting to start Ollama service...');
+
+            // Use spawn to start Ollama in the background
+            const child = spawn(ollamaPath, ['serve'], {
+                detached: true,
+                windowsHide: true,
+                stdio: 'ignore'
+            });
+
+            child.unref();
+
+            // Wait a moment for the service to start, then verify
+            await new Promise(resolve => setTimeout(resolve, 2500));
+
+            const isRunning = await this.isOllamaServiceRunning();
+            if (isRunning) {
+                console.log('[AI Config] Ollama service started successfully');
+            } else {
+                console.log('[AI Config] Ollama service may still be starting...');
+            }
+            return isRunning;
+        } catch (error) {
+            console.error('[AI Config] Failed to start Ollama service:', error.message);
+            return false;
+        }
+    }
+
     async getOllamaExecutable() {
         const command = process.platform === 'win32' ? 'where ollama' : 'which ollama';
 
@@ -320,29 +360,57 @@ class AIConfigManager {
     }
 
     async listOllamaModels() {
+        // First, try to fetch models via HTTP API
         try {
-            // Use AbortController for timeout since Node.js fetch doesn't support timeout option
             const controller = new AbortController();
             const timeoutId = setTimeout(() => controller.abort(), 5000);
-            
+
             const response = await fetch('http://127.0.0.1:11434/api/tags', {
                 method: 'GET',
                 signal: controller.signal
             });
             clearTimeout(timeoutId);
-            
+
             if (response.ok) {
                 const data = await response.json();
                 console.log('[AI Config] Ollama models fetched:', data.models);
                 return { success: true, models: data.models || [] };
             }
         } catch (error) {
-            console.log('[AI Config] Fetch error, falling back to CLI:', error.message);
-            // Fall back to the CLI below when the local HTTP service is not ready.
+            console.log('[AI Config] Ollama HTTP service not running, attempting auto-start...');
         }
 
+        // If HTTP API is not available, check if Ollama is installed and try to auto-start
+        const ollamaPath = await this.getOllamaExecutable();
+        if (ollamaPath) {
+            const started = await this.startOllamaService();
+            if (started) {
+                // Retry fetching models after auto-start
+                try {
+                    const controller = new AbortController();
+                    const timeoutId = setTimeout(() => controller.abort(), 5000);
+
+                    const response = await fetch('http://127.0.0.1:11434/api/tags', {
+                        method: 'GET',
+                        signal: controller.signal
+                    });
+                    clearTimeout(timeoutId);
+
+                    if (response.ok) {
+                        const data = await response.json();
+                        console.log('[AI Config] Ollama models fetched after auto-start:', data.models);
+                        return { success: true, models: data.models || [] };
+                    }
+                } catch (error) {
+                    console.log('[AI Config] Fetch error after auto-start:', error.message);
+                }
+            }
+        } else {
+            console.log('[AI Config] Ollama executable not found, skipping auto-start');
+        }
+
+        // Final fallback: try CLI
         try {
-            const ollamaPath = await this.getOllamaExecutable();
             if (!ollamaPath) {
                 return { success: false, models: [], message: 'Ollama executable was not found.' };
             }
@@ -436,20 +504,7 @@ class AIConfigManager {
     // Test connection to a service
     async testConnection(config) {
         try {
-            // Helper function for fetch with timeout
-            const fetchWithTimeout = async (url, options = {}, timeoutMs = 5000) => {
-                const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
-                try {
-                    const response = await fetch(url, { ...options, signal: controller.signal });
-                    clearTimeout(timeoutId);
-                    return response;
-                } catch (error) {
-                    clearTimeout(timeoutId);
-                    throw error;
-                }
-            };
-
+            // For Ollama, try auto-start if not running before testing
             if (config.provider === 'ollama') {
                 if (!config.model) {
                     return {
@@ -458,74 +513,22 @@ class AIConfigManager {
                         models: []
                     };
                 }
-                const response = await fetchWithTimeout(`${config.endpoint}/api/tags`, { method: 'GET' });
-                if (response.ok) {
-                    const data = await response.json();
-                    const models = data.models || [];
-                    if (!this.hasModel(models, config.model)) {
-                        return {
-                            success: false,
-                            message: `Ollama model "${config.model}" is not installed. Run: ollama pull ${config.model}`,
-                            models
-                        };
+
+                const isRunning = await this.isOllamaServiceRunning();
+                if (!isRunning) {
+                    const ollamaPath = await this.getOllamaExecutable();
+                    if (ollamaPath) {
+                        console.log('[AI Config] Ollama not running during test, attempting auto-start...');
+                        await this.startOllamaService();
                     }
-                    return { 
-                        success: true, 
-                        message: '连接成功',
-                        models
-                    };
-                }
-            } else if (config.provider === 'lmstudio') {
-                const response = await fetchWithTimeout(`${config.endpoint}/models`, { method: 'GET' });
-                if (response.ok) {
-                    const data = await response.json();
-                    return { 
-                        success: true, 
-                        message: '连接成功',
-                        models: data.data || []
-                    };
-                }
-            } else if (config.provider === 'anthropic') {
-                // Anthropic uses different API format
-                const headers = { 
-                    'Content-Type': 'application/json',
-                    'x-api-key': config.apiKey,
-                    'anthropic-version': '2023-06-01'
-                };
-                // Test with a simple message
-                const response = await fetchWithTimeout(`${config.endpoint}/messages`, {
-                    method: 'POST',
-                    headers,
-                    body: JSON.stringify({
-                        model: config.model,
-                        max_tokens: 10,
-                        messages: [{ role: 'user', content: 'Hi' }]
-                    })
-                }, 10000);
-                if (response.ok) {
-                    return { success: true, message: '连接成功' };
-                } else {
-                    const error = await response.json();
-                    return { success: false, message: error.error?.message || 'API Key 无效' };
-                }
-            } else {
-                // OpenAI-compatible APIs (openai, deepseek, zhipu, moonshot, qwen, custom)
-                const headers = { 'Content-Type': 'application/json' };
-                if (config.apiKey) {
-                    headers['Authorization'] = `Bearer ${config.apiKey}`;
-                }
-                const response = await fetchWithTimeout(`${config.endpoint}/models`, {
-                    method: 'GET',
-                    headers
-                });
-                if (response.ok) {
-                    return { success: true, message: '连接成功' };
-                } else {
-                    const error = await response.json().catch(() => ({}));
-                    return { success: false, message: error.error?.message || 'API Key 无效或端点错误' };
                 }
             }
-            return { success: false, message: '无法连接到服务' };
+
+            if (!_createAIProvider) {
+                throw new Error('AI Provider factory not set. Call setCreateAIProvider() first.');
+            }
+            const provider = _createAIProvider(config);
+            return await provider.testConnection();
         } catch (error) {
             return { success: false, message: error.message };
         }
@@ -790,4 +793,4 @@ class AIConfigManager {
     }
 }
 
-module.exports = { AIConfigManager, providers, mirrors };
+module.exports = { AIConfigManager, providers, mirrors, setCreateAIProvider };

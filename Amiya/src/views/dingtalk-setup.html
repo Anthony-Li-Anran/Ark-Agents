@@ -85,6 +85,7 @@
         .agent-icon.amiya { background: #ffe4e1; }
         .agent-icon.texas { background: #e6f3ff; }
         .agent-icon.kaltsit { background: #f0f8e6; }
+        .agent-icon.svrash { background: #e8f4f8; }
 
         .agent-details h3 {
             font-size: 0.9375rem;
@@ -402,6 +403,43 @@
                     </div>
                 </div>
 
+                <!-- Svrash -->
+                <div class="agent-section">
+                    <div class="agent-header">
+                        <div class="agent-info">
+                            <div class="agent-icon svrash">❄️</div>
+                            <div class="agent-details">
+                                <h3>银灰</h3>
+                                <p>金融助手</p>
+                            </div>
+                        </div>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="svrash-enabled">
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="svrash-appKey">AppKey</label>
+                        <input type="text" class="input" id="svrash-appKey" placeholder="企业内部应用的 AppKey">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="svrash-appSecret">AppSecret</label>
+                        <input type="password" class="input" id="svrash-appSecret" placeholder="企业内部应用的 AppSecret">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="svrash-webhookUrl">Webhook 地址</label>
+                        <input type="text" class="input" id="svrash-webhookUrl" placeholder="https://oapi.dingtalk.com/robot/send?access_token=xxx">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="svrash-secret">密钥 (Secret)</label>
+                        <input type="password" class="input" id="svrash-secret" placeholder="选填，用于签名验证">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="svrash-accessToken">Access Token</label>
+                        <input type="text" class="input" id="svrash-accessToken" placeholder="自动从 Webhook 提取" readonly>
+                    </div>
+                </div>
+
                 <div class="btn-group">
                     <button class="btn btn-secondary" onclick="testAllConnections()">测试全部连接</button>
                     <button class="btn btn-primary" onclick="saveConfig()">保存配置</button>
@@ -427,7 +465,7 @@
 
     <script>
         const { ipcRenderer } = require('electron');
-        const agents = ['amiya', 'texas', 'kaltsit'];
+        const agents = ['amiya', 'texas', 'kaltsit', 'svrash'];
 
         async function loadConfig() {
             const config = await ipcRenderer.invoke('dingtalk-get-config');
@@ -489,7 +527,7 @@
         }
 
         function getAgentName(agent) {
-            const names = { amiya: '阿米娅', texas: '德克萨斯', kaltsit: '凯尔希' };
+            const names = { amiya: '阿米娅', texas: '德克萨斯', kaltsit: '凯尔希', svrash: '银灰' };
             return names[agent] || agent;
         }
 
