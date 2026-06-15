@@ -6,7 +6,7 @@
 
 > 基于罗德岛干员的 Electron 模块化多智能体桌面应用
 
-[![Version](https://img.shields.io/badge/Version-v0.1.0-blue)](https://github.com/Anthony-Li-Anran/Ark-Agents/releases)
+[![Version](https://img.shields.io/badge/Version-v0.2.0-blue)](https://github.com/Anthony-Li-Anran/Ark-Agents/releases)
 [![Platform](https://img.shields.io/badge/Platform-Windows-red)](https://github.com/Anthony-Li-Anran/Ark-Agents)
 [![Electron](https://img.shields.io/badge/Powered%20by-Electron-yellow)](https://www.electronjs.org/)
 [![AI](https://img.shields.io/badge/AI-Powered-orange)](https://github.com/Anthony-Li-Anran/Ark-Agents)
@@ -20,7 +20,7 @@ Ark Agents 是一款创新的桌面应用，将《明日方舟》中的罗德岛
 
 ## 当前版本 <sub>Version</sub>
 
-### v0.1.0
+### v0.2.0
 
 **主要特性**
 
@@ -74,6 +74,7 @@ Ark Agents 是一款创新的桌面应用，将《明日方舟》中的罗德岛
 - **文件整理器**: Texas 专属桌面文件自动分类整理
 - **学习助手**: Muelsyse 文档管理、知识问答、思维导图、番茄钟
 - **医疗咨询**: Kaltsit 医疗问答、症状分析
+- **金融助手**: Svrash 股票盯盘、实时行情推送、价格预警、持仓盈亏计算、ETF 支持
 </details>
 
 ***
